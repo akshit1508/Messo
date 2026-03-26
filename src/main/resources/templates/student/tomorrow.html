@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Tomorrow’s Menu</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <script src="/js/theme.js"></script>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/student/dashboard">⬅ Back</a>
+    <a href="/logout">Logout</a>
+    <button onclick="toggleTheme()" class="theme-btn">🌙</button>
+</nav>
+
+<div class="container">
+
+    <div class="form-box">
+        <h2>🍽 Tomorrow’s Food</h2>
+
+        <p class="info-text" th:if="${message}" th:text="${message}"></p>
+
+        <div th:if="${food != null}" class="food-card">
+            <h3 th:text="${food.name}"></h3>
+
+            <div class="food-details">
+                <p><strong>Meal Type:</strong> <span th:text="${food.mealType}"></span></p>
+                <p><strong>Date:</strong> <span th:text="${date}"></span></p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

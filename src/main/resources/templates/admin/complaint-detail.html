@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Complaint Detail</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+
+<h2>📄 Complaint Detail</h2>
+
+<div class="detail-card">
+    <p><b>Student:</b> <span th:text="${complaint.user.email}"></span></p>
+    <p><b>Type:</b> <span th:text="${complaint.type}"></span></p>
+    <p><b>Description:</b></p>
+
+    <div class="desc-box" th:text="${complaint.description}"></div>
+
+    <p>
+        <b>Status:</b>
+        <span th:text="${complaint.resolved ? 'Resolved' : 'Pending'}"
+              th:classappend="${complaint.resolved ? 'badge green' : 'badge red'}">
+        </span>
+    </p>
+
+    <form th:if="${!complaint.resolved}"
+          method="post"
+          th:action="@{/admin/complaint/resolve/{id}(id=${complaint.id})}">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button class="resolve-btn">✅ Mark Resolved</button>
+    </form>
+
+    <br>
+    <a href="/admin/complaints">⬅ Back to Complaints</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student | Announcements</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+</head>
+
+<body>
+
+<nav class="navbar">
+    <h2>MESSO</h2>
+    <div>
+        <a th:href="@{/student/dashboard}">Dashboard</a>
+        <a th:href="@{/logout}">Logout</a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <h2 class="page-title">📢 Announcements</h2>
+
+    <!-- No announcements -->
+    <p th:if="${#lists.isEmpty(announcements)}"
+       class="info-text">
+        No announcements available
+    </p>
+
+    <!-- Announcements List -->
+    <div class="announcement-list">
+
+        <div class="glass-card announcement"
+             th:each="a : ${announcements}">
+
+            <h3 th:text="${a.title}"></h3>
+
+            <p th:text="${a.message}"></p>
+
+            <span class="date"
+                  th:text="${#temporals.format(a.createdAt, 'dd MMM yyyy, hh:mm a')}">
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

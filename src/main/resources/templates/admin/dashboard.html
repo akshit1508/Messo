@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/premium.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <h2>MESSO ADMIN</h2>
+    <a href="/logout" style="color:white">Logout</a>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard">
+    <h1>Admin Panel</h1>
+
+    <!-- MAIN ACTION CARDS -->
+    <div class="cards">
+
+        <div class="card" onclick="location.href='/admin/create-poll'">
+            <h3>➕ Create Poll</h3>
+        </div>
+
+        <div class="card" onclick="location.href='/admin/poll/results'">
+            <h3>📊 Poll Results</h3>
+        </div>
+
+        <div class="card" onclick="location.href='/admin/announcement'">
+            <h3>📢 Post Announcement</h3>
+        </div>
+
+        <div class="card" onclick="location.href='/admin/ratings'">
+            <h3>⭐ Food Ratings</h3>
+        </div>
+
+    </div>
+
+    <!-- COMPLAINT STATS (CLICKABLE) -->
+    <h2 style="margin-top:40px">📩 Complaints Overview</h2>
+
+    <div class="cards">
+
+        <div class="card glass"
+             onclick="location.href='/admin/complaints'">
+            <h3>📥 Total Complaints</h3>
+            <p th:text="${totalComplaints}">0</p>
+        </div>
+
+        <div class="card glass"
+             onclick="location.href='/admin/complaints'">
+            <h3>⏳ Pending</h3>
+            <p th:text="${pendingComplaints}">0</p>
+        </div>
+
+        <div class="card glass"
+             onclick="location.href='/admin/complaints'">
+            <h3>✅ Resolved</h3>
+            <p th:text="${resolvedComplaints}">0</p>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

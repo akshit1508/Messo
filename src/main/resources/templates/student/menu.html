@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Food Menu</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <script src="/js/theme.js"></script>
+
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/student/dashboard">⬅ Back</a>
+    <a href="/logout">Logout</a>
+    <button onclick="toggleTheme()" style="background:none;border:none;color:white;font-size:18px;cursor:pointer">
+    🌙
+</button>
+
+</nav>
+
+<div class="content">
+    <h2>Rate Today’s Food</h2>
+
+    <div th:each="food : ${foods}" class="food-card">
+        <h4 th:text="${food.name}"></h4>
+
+        <form th:action="@{/student/rate}" method="post">
+            <input type="hidden" name="foodId" th:value="${food.id}">
+            <select name="rating" required>
+                <option value="">Rating</option>
+                <option th:each="i : ${#numbers.sequence(1,5)}"
+                        th:value="${i}" th:text="${i}"></option>
+            </select>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

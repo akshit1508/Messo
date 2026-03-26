@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Complaints</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+
+<h2>📢 Student Complaints</h2>
+
+<table class="complaint-table">
+    <thead>
+        <tr>
+            <th>Student</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        <tr th:each="c : ${complaints}">
+            <td th:text="${c.user.email}"></td>
+            <td th:text="${c.type}"></td>
+            <td>
+                <span th:text="${c.resolved ? 'Resolved' : 'Pending'}"
+                      th:classappend="${c.resolved ? 'badge green' : 'badge red'}">
+                </span>
+            </td>
+            <td>
+                <!-- ✅ NO JS -->
+                <a th:href="@{/admin/complaints/{id}(id=${c.id})}"
+                   class="view-btn">
+                    View
+                </a>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

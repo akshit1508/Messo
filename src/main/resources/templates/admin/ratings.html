@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Food Ratings</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<h2>⭐ Food Rating Overview</h2>
+
+<table class="complaint-table">
+    <thead>
+        <tr>
+            <th>Food Item</th>
+            <th>Rating</th>
+            <th>person</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="row : ${stats}">
+            <td th:text="${row[0]}"></td>
+            <td th:text="${#numbers.formatDecimal(row[1],1,1)} + ' ⭐'"></td>
+            <td th:text="${row[2]}"></td>
+        </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

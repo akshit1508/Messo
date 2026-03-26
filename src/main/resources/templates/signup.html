@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>MESSO | Sign Up</title>
+    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <script src="/js/theme.js"></script>
+
+</head>
+<body>
+
+<div class="auth-container">
+    <h2>Create Account</h2>
+
+    <form th:action="@{/signup}" method="post">
+        <input type="hidden"
+           th:name="${_csrf.parameterName}"
+           th:value="${_csrf.token}" />
+        <input type="text" name="name" placeholder="Full Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="tel" name="phone" placeholder="Phone" required>
+        <input type="text" name="hostel" placeholder="Hostel" required>
+        <input type="text" name="studentId" placeholder="Student ID" required>
+        <input type="password" name="password" placeholder="Password" required>
+
+        <select name="role" required>
+            <option value="">Select Role</option>
+            <option value="ROLE_STUDENT">Student</option>
+            <option value="ROLE_ADMIN">Admin</option>
+        </select>
+
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <p class="error" th:if="${error}" th:text="${error}"></p>
+
+    <p class="link">
+        Already registered? <a th:href="@{/login}">Login</a>
+    </p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Submit Complaint</title>
+    <link rel="stylesheet" th:href="@{/css/complaint.css}">
+</head>
+<body>
+
+<div class="complaint-wrapper">
+    <h2>📝 Submit a Complaint</h2>
+    <p class="subtitle">
+        Help us improve mess quality & services by reporting issues
+    </p>
+
+    <form method="post" action="/student/complaint" class="complaint-form">
+
+        <input type="hidden"
+           th:name="${_csrf.parameterName}"
+           th:value="${_csrf.token}">
+           
+        <!-- Complaint Type -->
+        <label>Complaint Type</label>
+        <select name="type" required>
+            <option value="">Select Type</option>
+            <option>Food Quality</option>
+            <option>Food Quantity</option>
+            <option>Cleanliness</option>
+            <option>Staff Behaviour</option>
+            <option>Service Delay</option>
+            <option>Other</option>
+        </select>
+
+        <!-- Description -->
+        <label>Description</label>
+        <textarea name="description"
+                  placeholder="Describe your issue clearly (what happened, when, and how it affected you)"
+                  required></textarea>
+
+        <!-- Rating -->
+        <label>Rating (Optional)</label>
+        <select name="rating">
+            <option value="">-- Optional --</option>
+            <option value="1">⭐ 1 - Very Bad</option>
+            <option value="2">⭐⭐ 2 - Bad</option>
+            <option value="3">⭐⭐⭐ 3 - Average</option>
+            <option value="4">⭐⭐⭐⭐ 4 - Good</option>
+            <option value="5">⭐⭐⭐⭐⭐ 5 - Excellent</option>
+        </select>
+
+        <button type="submit">Submit Complaint</button>
+    </form>
+</div>
+
+</body>
+</html>
