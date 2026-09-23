@@ -43,12 +43,13 @@ export function StarRating({
             onClick={() => onChange && onChange(star)}
             onMouseEnter={() => !disabled && onChange && setHoverValue(star)}
             onMouseLeave={() => !disabled && onChange && setHoverValue(null)}
-            className={`transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded p-0.5 ${
+            className={`transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded p-1 ${
               disabled || !onChange
                 ? "cursor-default"
-                : "cursor-pointer hover:scale-110"
+                : "cursor-pointer hover:scale-110 active:scale-95"
             }`}
             aria-label={`${star} star${star > 1 ? "s" : ""}`}
+            aria-pressed={star <= value}
           >
             <svg
               className={`${sizeClasses[size]} ${
