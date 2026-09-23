@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import Link from "next/link";
 import { studentApi } from "@/lib/student";
 import { ApiError } from "@/types/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { Textarea } from "@/components/ui/Textarea";
 import { Alert } from "@/components/ui/Alert";
 import { StarRating } from "@/components/student/StarRating";
 
@@ -29,11 +31,14 @@ export default function ComplaintPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [generalError, setGeneralError] = useState<string | null>(null);
 
+  const categorySelectId = useId();
+  const descriptionTextareaId = useId();
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
     if (!complaintType.trim()) {
-      errors.type = "Complaint type is required";
+      errors.type = "Complaint category is required";
     }
 
     if (!description.trim()) {
@@ -67,9 +72,9 @@ export default function ComplaintPage() {
       });
 
       setSuccessMessage(
-        response.message || "Your complaint has been submitted. Mess administration will review it."
+        response.message || "Your complaint has been submitted. The mess administration will review it."
       );
-      // Clear form on success
+      // Reset form fields on successful submission
       setComplaintType("FOOD_QUALITY");
       setDescription("");
       setRating(0);
@@ -88,7 +93,7 @@ export default function ComplaintPage() {
           });
           setFieldErrors(errors);
         }
-        setGeneralError(err.message || "Failed to submit complaint. Please check the inputs.");
+        setGeneralError(err.message || "Failed to submit complaint. Please check your inputs.");
       } else {
         setGeneralError("An unexpected error occurred while submitting your grievance.");
       }
@@ -98,112 +103,125 @@ export default function ComplaintPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+      {/* Page Header */}
       <PageHeader
-        title="File a Grievance or Suggestion"
-        description="Submit concerns regarding food quality, dining hygiene, or facility issues directly to the mess administration."
+        title="Submit a Complaint"
+        description="Tell the mess team about an issue so it can be reviewed."
+        action={
+          <div className="flex items-center gap-2">
+            <Link href="/student/dashboard">
+              <Button variant="ghost" size="sm" className="text-xs">
+                &larr; Dashboard
+              </Button>
+            </Link>
+          </div>
+        }
       />
 
+      {/* Success Notification Alert */}
       {successMessage && (
         <Alert
           variant="success"
-          title="Grievance Registered"
+          title="Complaint Submitted Successfully"
           onClose={() => setSuccessMessage(null)}
         >
-          {successMessage}
+          <div className="space-y-1">
+            <p>{successMessage}</p>
+            <p className="text-xs text-emerald-800/80">
+              When administration resolves your grievance, an update will appear in your dashboard notifications.
+            </p>
+          </div>
         </Alert>
       )}
 
+      {/* General Submission Error Alert */}
       {generalError && (
         <Alert
           variant="danger"
-          title="Submission Error"
+          title="Submission Failed"
           onClose={() => setGeneralError(null)}
         >
           {generalError}
         </Alert>
       )}
 
-      <Card className="border border-gray-200 shadow-sm">
-        <CardHeader className="pb-4 border-b border-gray-100">
-          <CardTitle className="text-lg font-semibold text-gray-900">
-            Complaint Details
-          </CardTitle>
+      {/* Complaint Submission Card */}
+      <Card className="border-slate-200/90 shadow-xs">
+        <CardHeader className="pb-4 border-b border-slate-100">
+          <div className="space-y-1">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              Grievance Submission
+            </span>
+            <CardTitle className="text-xl font-bold text-slate-900 tracking-tight">
+              Lodge Issue or Feedback
+            </CardTitle>
+            <p className="text-xs text-slate-500">
+              All submissions are logged and reviewed directly by the mess administration committee.
+            </p>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Category */}
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+            {/* Category Select */}
             <div>
-              <label
-                htmlFor="complaintType"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Complaint Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="complaintType"
+              <Select
+                id={categorySelectId}
                 name="complaintType"
+                label="Complaint Category"
+                required
                 value={complaintType}
-                onChange={(e) => setComplaintType(e.target.value)}
+                onChange={(e) => {
+                  setComplaintType(e.target.value);
+                  if (fieldErrors.type) {
+                    setFieldErrors((prev) => ({ ...prev, type: "" }));
+                  }
+                }}
                 disabled={submitting}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
-              >
-                {COMPLAINT_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-              {fieldErrors.type && (
-                <p className="mt-1.5 text-xs text-red-600">{fieldErrors.type}</p>
-              )}
+                options={COMPLAINT_TYPES}
+                error={fieldErrors.type}
+                helperText="Select the area most applicable to your issue."
+              />
             </div>
 
-            {/* Description */}
+            {/* Description Textarea */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label
-                  htmlFor="description"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Detailed Description <span className="text-red-500">*</span>
-                </label>
-                <span className="text-xs text-gray-400">
-                  {description.length} / 1000 characters
-                </span>
-              </div>
-              <textarea
-                id="description"
+              <Textarea
+                id={descriptionTextareaId}
                 name="description"
+                label="Description"
+                required
                 rows={5}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                maxLength={1000}
+                showCount={true}
+                onChange={(e) => {
+                  setDescription(e.target.value);
+                  if (fieldErrors.description) {
+                    setFieldErrors((prev) => ({ ...prev, description: "" }));
+                  }
+                }}
                 disabled={submitting}
-                placeholder="Describe what occurred, date/meal timing, and any relevant details..."
-                className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:outline-none focus:ring-1 disabled:opacity-50 ${
-                  fieldErrors.description
-                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                }`}
+                placeholder="Describe what occurred, meal timing, and any relevant details..."
+                error={fieldErrors.description}
+                helperText="Provide specific details (5 to 1000 characters) to help the mess team investigate."
               />
-              {fieldErrors.description && (
-                <p className="mt-1.5 text-xs text-red-600 font-medium">
-                  {fieldErrors.description}
-                </p>
-              )}
             </div>
 
-            {/* Optional Food / Severity Rating */}
-            <div className="p-4 bg-gray-50/70 rounded-xl border border-gray-100">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Associated Severity / Meal Experience Rating{" "}
-                <span className="text-xs text-gray-400 font-normal">(Optional)</span>
-              </label>
-              <p className="text-xs text-gray-500 mb-3">
-                If your complaint relates directly to meal preparation quality, you may specify a rating.
-              </p>
-              <div className="flex items-center space-x-3">
+            {/* Optional Associated Rating */}
+            <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-2">
+              <div className="space-y-0.5">
+                <label className="block text-sm font-medium text-slate-900">
+                  Associated Severity / Experience Rating{" "}
+                  <span className="text-xs text-slate-400 font-normal">(Optional)</span>
+                </label>
+                <p className="text-xs text-slate-500">
+                  If this issue directly relates to food taste or preparation, you may attach a rating.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 pt-1">
                 <StarRating
                   value={rating}
                   onChange={(val) => setRating(val)}
@@ -214,21 +232,50 @@ export default function ComplaintPage() {
                   <button
                     type="button"
                     onClick={() => setRating(0)}
-                    className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    disabled={submitting}
+                    className="text-xs text-slate-500 hover:text-slate-800 underline focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded px-1"
                   >
                     Clear rating
                   </button>
                 )}
               </div>
               {fieldErrors.rating && (
-                <p className="mt-1.5 text-xs text-red-600">{fieldErrors.rating}</p>
+                <p className="text-xs font-medium text-rose-600">{fieldErrors.rating}</p>
               )}
             </div>
 
+            {/* Helpful Guidance Notice */}
+            <div className="p-3.5 bg-blue-50/50 rounded-lg border border-blue-100 flex items-start gap-3">
+              <svg
+                className="w-4 h-4 text-blue-600 mt-0.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="space-y-0.5 text-xs text-slate-600 leading-relaxed">
+                <p className="font-semibold text-slate-800">Helpful Guidance</p>
+                <p>
+                  Include specific meal dates, meal types (breakfast, lunch, dinner), and locations when relevant. Avoid submitting duplicate complaints for the same incident.
+                </p>
+              </div>
+            </div>
+
             {/* Form Actions */}
-            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-gray-100">
-              <Link href="/student/dashboard">
-                <Button variant="ghost" type="button" disabled={submitting}>
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2 border-t border-slate-100">
+              <Link href="/student/dashboard" className="w-full sm:w-auto">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={submitting}
+                  className="w-full sm:w-auto text-slate-600"
+                >
                   Cancel
                 </Button>
               </Link>
@@ -236,8 +283,9 @@ export default function ComplaintPage() {
                 variant="primary"
                 type="submit"
                 disabled={submitting}
+                className="w-full sm:w-auto"
               >
-                {submitting ? "Submitting grievance..." : "Submit Complaint"}
+                {submitting ? "Submitting..." : "Submit Complaint"}
               </Button>
             </div>
           </form>
