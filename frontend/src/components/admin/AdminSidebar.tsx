@@ -12,7 +12,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Dashboard",
     href: "/admin/dashboard",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -26,7 +26,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Create Poll",
     href: "/admin/create-poll",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -40,7 +40,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Poll Results",
     href: "/admin/poll-results",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -54,7 +54,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Complaints",
     href: "/admin/complaints",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -68,7 +68,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Announcements",
     href: "/admin/announcement",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -82,7 +82,7 @@ export const ADMIN_NAV_ITEMS = [
     name: "Ratings",
     href: "/admin/ratings",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -99,18 +99,18 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
   const { currentUser } = useAuth();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-slate-900 border-r border-slate-800 text-slate-200 min-h-screen fixed left-0 top-0 bottom-0 z-20">
-      {/* Brand Logo Header */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-800 space-x-3">
-        <span className="text-2xl font-black tracking-tight text-white">MESO</span>
-        <span className="text-slate-600">|</span>
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200/90 min-h-screen fixed left-0 top-0 bottom-0 z-20">
+      {/* Brand Header */}
+      <div className="h-16 flex items-center px-6 border-b border-slate-100 space-x-3">
+        <span className="text-2xl font-black tracking-tight text-blue-600">MESO</span>
+        <span className="text-slate-300">|</span>
         <Badge variant="warning" size="sm">
           Admin
         </Badge>
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+      <div className="flex-1 py-5 px-3 space-y-1 overflow-y-auto">
         <div className="px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
           Management Console
         </div>
@@ -122,13 +122,13 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? "bg-blue-600 text-white font-semibold shadow-xs"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <span className={isActive ? "text-white" : "text-slate-400"}>
+              <span className={isActive ? "text-blue-600" : "text-slate-400"}>
                 {item.icon}
               </span>
               <span>{item.name}</span>
@@ -138,23 +138,23 @@ export function AdminSidebar({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {/* Admin Profile & Sign Out Footer */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/60">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/70">
         <div className="flex items-center space-x-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold flex items-center justify-center text-sm">
+          <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-sm shrink-0">
             A
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white truncate">
+            <p className="text-xs font-semibold text-slate-900 truncate">
               {currentUser?.email || "Administrator"}
             </p>
-            <p className="text-xs text-amber-400 font-mono">ROLE_ADMIN</p>
+            <p className="text-[11px] text-amber-700 font-mono font-medium">ROLE_ADMIN</p>
           </div>
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={onLogout}
-          className="w-full justify-center text-xs border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white"
+          className="w-full justify-center text-xs"
         >
           Sign out
         </Button>

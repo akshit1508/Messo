@@ -12,7 +12,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Dashboard",
     href: "/student/dashboard",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -26,7 +26,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Rate Food",
     href: "/student/rate",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -40,7 +40,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Tomorrow's Poll",
     href: "/student/poll",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -54,7 +54,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Tomorrow's Menu",
     href: "/student/tomorrow",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -68,7 +68,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Complaints",
     href: "/student/complaint",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -82,7 +82,7 @@ export const STUDENT_NAV_ITEMS = [
     name: "Announcements",
     href: "/student/announcements",
     icon: (
-      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -99,20 +99,20 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
   const { currentUser } = useAuth();
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 min-h-screen fixed left-0 top-0 bottom-0 z-20">
-      {/* Brand Logo Header */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-100 space-x-3">
+    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200/90 min-h-screen fixed left-0 top-0 bottom-0 z-20">
+      {/* Brand Header */}
+      <div className="h-16 flex items-center px-6 border-b border-slate-100 space-x-3">
         <span className="text-2xl font-black tracking-tight text-blue-600">MESO</span>
-        <span className="text-gray-300">|</span>
+        <span className="text-slate-300">|</span>
         <Badge variant="default" size="sm">
           Student
         </Badge>
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-          Student Services
+      <div className="flex-1 py-5 px-3 space-y-1 overflow-y-auto">
+        <div className="px-3 pb-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+          Student Portal
         </div>
         {STUDENT_NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
@@ -120,13 +120,13 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               }`}
             >
-              <span className={isActive ? "text-blue-600" : "text-gray-400"}>
+              <span className={isActive ? "text-blue-600" : "text-slate-400"}>
                 {item.icon}
               </span>
               <span>{item.name}</span>
@@ -136,16 +136,16 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
       </div>
 
       {/* Student Profile & Sign Out Footer */}
-      <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/70">
         <div className="flex items-center space-x-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm">
+          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm shrink-0">
             {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : "S"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">
-              {currentUser?.email}
+            <p className="text-xs font-semibold text-slate-900 truncate">
+              {currentUser?.email || "Student"}
             </p>
-            <p className="text-xs text-gray-500 font-mono">ID #{currentUser?.userId}</p>
+            <p className="text-[11px] text-slate-500 font-mono">ID #{currentUser?.userId ?? "—"}</p>
           </div>
         </div>
         <Button

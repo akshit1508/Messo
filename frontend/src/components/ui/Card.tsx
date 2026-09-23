@@ -9,7 +9,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-xl border border-slate-200/80 bg-white p-6 shadow-sm transition-shadow dark:border-slate-800 dark:bg-slate-900 ${className}`}
+      className={`rounded-xl border border-slate-200/90 bg-white p-5 sm:p-6 shadow-xs transition-shadow ${className}`}
     >
       {children}
     </div>
@@ -35,7 +35,7 @@ export function CardTitle({
 }) {
   return (
     <h3
-      className={`text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100 ${className}`}
+      className={`text-base sm:text-lg font-semibold tracking-tight text-slate-900 ${className}`}
     >
       {children}
     </h3>
@@ -50,7 +50,7 @@ export function CardDescription({
   children: React.ReactNode;
 }) {
   return (
-    <p className={`text-sm text-slate-500 dark:text-slate-400 ${className}`}>
+    <p className={`text-xs sm:text-sm text-slate-500 ${className}`}>
       {children}
     </p>
   );
@@ -74,7 +74,9 @@ export function CardFooter({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 ${className}`}>
+    <div
+      className={`mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100 ${className}`}
+    >
       {children}
     </div>
   );

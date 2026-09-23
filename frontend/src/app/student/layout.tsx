@@ -32,7 +32,7 @@ export default function StudentLayout({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <Loading size="lg" text="Verifying student access..." />
       </div>
     );
@@ -43,7 +43,7 @@ export default function StudentLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col antialiased">
+    <div className="min-h-screen bg-slate-50 flex flex-col antialiased">
       {/* Desktop Sidebar (fixed w-64) */}
       <StudentSidebar onLogout={handleLogout} />
 

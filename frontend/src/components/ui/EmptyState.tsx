@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/Button";
 
-interface EmptyStateProps {
+export interface EmptyStateProps {
   title: string;
   description: string;
   icon?: React.ReactNode;
@@ -20,9 +20,9 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-dashed border-gray-300 bg-white ${className}`}
+      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-dashed border-slate-300 bg-white ${className}`}
     >
-      <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3.5">
         {icon || (
           <svg
             className="w-6 h-6"
@@ -39,8 +39,10 @@ export function EmptyState({
           </svg>
         )}
       </div>
-      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-      <p className="mt-1 text-sm text-gray-500 max-w-sm">{description}</p>
+      <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+      <p className="mt-1 text-sm text-slate-500 max-w-sm leading-relaxed">
+        {description}
+      </p>
       {actionText && onAction && (
         <div className="mt-5">
           <Button variant="outline" size="sm" onClick={onAction}>

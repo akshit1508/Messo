@@ -18,19 +18,16 @@ export function Alert({
   const effectiveVariant = variant === "danger" ? "error" : variant;
 
   const variantStyles = {
-    info: "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-200",
-    success:
-      "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
-    warning:
-      "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200",
-    error:
-      "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200",
+    info: "border-blue-200 bg-blue-50/80 text-blue-900",
+    success: "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+    warning: "border-amber-200 bg-amber-50/80 text-amber-900",
+    error: "border-rose-200 bg-rose-50/80 text-rose-900",
   };
 
   return (
     <div
       role="alert"
-      className={`rounded-lg border p-4 text-sm relative flex items-start justify-between ${variantStyles[effectiveVariant]} ${className}`}
+      className={`rounded-xl border p-4 text-sm relative flex items-start justify-between ${variantStyles[effectiveVariant]} ${className}`}
     >
       <div className="flex-1 pr-2">
         {title && <h5 className="mb-1 font-semibold leading-tight">{title}</h5>}
@@ -40,7 +37,7 @@ export function Alert({
         <button
           type="button"
           onClick={onClose}
-          className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 text-current opacity-70 hover:opacity-100 transition-opacity"
+          className="p-1 rounded-lg hover:bg-black/5 text-current opacity-70 hover:opacity-100 transition-opacity"
           aria-label="Dismiss alert"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

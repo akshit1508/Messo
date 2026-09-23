@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@/components/ui/Button";
 
-interface ErrorStateProps {
+export interface ErrorStateProps {
   title?: string;
   message: string;
   onRetry?: () => void;
@@ -16,9 +16,9 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-red-200 bg-red-50/50 ${className}`}
+      className={`flex flex-col items-center justify-center text-center p-8 sm:p-12 rounded-xl border border-rose-200 bg-rose-50/50 ${className}`}
     >
-      <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+      <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-3.5">
         <svg
           className="w-6 h-6"
           fill="none"
@@ -33,8 +33,10 @@ export function ErrorState({
           />
         </svg>
       </div>
-      <h3 className="text-base font-semibold text-red-900">{title}</h3>
-      <p className="mt-1 text-sm text-red-600 max-w-sm">{message}</p>
+      <h3 className="text-base font-semibold text-rose-900">{title}</h3>
+      <p className="mt-1 text-sm text-rose-700 max-w-sm leading-relaxed">
+        {message}
+      </p>
       {onRetry && (
         <div className="mt-5">
           <Button variant="danger" size="sm" onClick={onRetry}>
