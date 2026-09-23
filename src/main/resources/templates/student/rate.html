@@ -20,7 +20,8 @@
 
 <div class="container">
     <div class="form-box">
-        <h3 th:text="${food.name}"></h3>
+        <p class="info-text" th:if="${message}" th:text="${message}"></p>
+        <h3 th:if="${food != null}" th:text="${food.name}"></h3>
 
         <p class="error" th:if="${ratingExpired}">
             Rating window expired

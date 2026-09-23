@@ -26,9 +26,13 @@ public class SignupController {
     public String register(
             @RequestParam String email,
             @RequestParam String password,
-            @RequestParam String role
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String studentId,
+            @RequestParam(required = false) String hostel,
+            @RequestParam(required = false) String phone
     ) {
-        userService.register(email, password, role);
+        userService.registerStudent(email, password, name, studentId, hostel, phone);
         return "redirect:/login";
     }
 }

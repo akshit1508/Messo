@@ -118,12 +118,11 @@ public FoodPoll createPoll(List<String> foods) {
     // =========================
     @Transactional(readOnly = true)
     public String getWinningFood(Long pollId) {
-
         return voteRepo.getPollResults(pollId)
                 .stream()
                 .max((a, b) -> Long.compare((Long) a[1], (Long) b[1]))
                 .map(row -> (String) row[0])
-                .orElse("No votes yet");
+                .orElse(null);
     }
 
     // =========================
@@ -131,40 +130,45 @@ public FoodPoll createPoll(List<String> foods) {
     // PUBLISH TOMORROW MENU
     // =========================
     @Transactional
-public void publishTomorrowMenu() {
-
-    FoodPoll poll = getActivePoll();
-    if (poll == null) {
-        throw new RuntimeException("No active poll found");
+    public void publishTomorrowMenu() {
+        FoodPoll poll = getActivePoll();
+        if (poll == null) {
+            throw new IllegalStateException("No active poll found to publish");
+        }
+        publishTomorrowMenu(poll.getId());
     }
 
-    LocalDate tomorrow = LocalDate.now().plusDays(1);
+    @Transactional
+    public void publishTomorrowMenu(Long pollId) {
+        FoodPoll poll = pollRepo.findById(pollId)
+                .orElseThrow(() -> new IllegalArgumentException("Poll not found with ID: " + pollId));
 
-    String winningFoodName = getWinningFood(poll.getId());
+        String winningFoodName = getWinningFood(poll.getId());
+        if (winningFoodName == null || winningFoodName.trim().isEmpty() || "No votes yet".equalsIgnoreCase(winningFoodName)) {
+            throw new IllegalStateException("Cannot publish tomorrow's menu: No votes have been cast on this poll yet.");
+        }
 
-    Food food = foodRepository.findByNameIgnoreCase(winningFoodName)
-            .orElseGet(() -> {
-                Food newFood = new Food();
-                newFood.setName(winningFoodName);
-                newFood.setMealType("Lunch");
-                return foodRepository.save(newFood);
-            });
+        LocalDate targetDate = poll.getPollDate() != null ? poll.getPollDate() : LocalDate.now().plusDays(1);
 
-    // ✅ CHECK IF MENU EXISTS
-    DailyMenu menu = dailyMenuRepository.findByMenuDate(tomorrow)
-            .orElseGet(() -> {
-                DailyMenu m = new DailyMenu();
-                m.setMenuDate(tomorrow);
-                return m;
-            });
+        Food food = foodRepository.findByNameIgnoreCase(winningFoodName)
+                .orElseGet(() -> {
+                    Food newFood = new Food();
+                    newFood.setName(winningFoodName);
+                    newFood.setMealType("Lunch");
+                    return foodRepository.save(newFood);
+                });
 
-    // ✅ UPDATE OR INSERT
-    menu.setFood(food);
-    dailyMenuRepository.save(menu);
+        DailyMenu menu = dailyMenuRepository.findByMenuDate(targetDate)
+                .orElseGet(() -> {
+                    DailyMenu m = new DailyMenu();
+                    m.setMenuDate(targetDate);
+                    return m;
+                });
 
-    // ✅ CLOSE POLL
-    poll.setActive(false);
-    pollRepo.save(poll);
-}
+        menu.setFood(food);
+        dailyMenuRepository.save(menu);
 
+        poll.setActive(false);
+        pollRepo.save(poll);
+    }
 }

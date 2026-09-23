@@ -74,6 +74,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -87,7 +94,7 @@
     <artifactId>maven-surefire-plugin</artifactId>
     <version>3.2.5</version>
     <configuration>
-        <skipTests>true</skipTests>
+        <skipTests>false</skipTests>
     </configuration>
 </plugin>
 

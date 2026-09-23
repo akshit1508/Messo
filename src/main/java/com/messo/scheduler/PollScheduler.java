@@ -16,8 +16,11 @@ public class PollScheduler {
 
     // Runs every day at 11 PM
     @Scheduled(cron = "0 0 23 * * ?")
-   // @Transactional
     public void autoPublishTomorrowMenu() {
-        pollService.publishTomorrowMenu();
+        try {
+            pollService.publishTomorrowMenu();
+        } catch (Exception e) {
+            System.err.println("Scheduled auto-publish tomorrow menu skipped: " + e.getMessage());
+        }
     }
 }

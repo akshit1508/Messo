@@ -197,16 +197,9 @@ public String submitRating(
             Authentication auth) {
 
         User user = userRepository.findByEmail(auth.getName())
-                .orElseThrow();
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Announcement ann =
-                announcementRepository.findById(id).orElseThrow();
-
-        AnnouncementRead read = new AnnouncementRead();
-        read.setUser(user);
-        read.setAnnouncement(ann);
-
-        announcementReadRepository.save(read);
+        announcementService.markAnnouncementAsRead(user, id);
 
         return "redirect:/student/dashboard";
     }

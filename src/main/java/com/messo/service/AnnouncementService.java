@@ -58,7 +58,21 @@ public class AnnouncementService {
         return total - read;
     }
     public List<Announcement> getAll() {
-    return announcementRepository.findAllByOrderByCreatedAtDesc();
-}
+        return announcementRepository.findAllByOrderByCreatedAtDesc();
+    }
 
+    // =========================
+    // STUDENT: DISMISS ANNOUNCEMENT (IDEMPOTENT)
+    // =========================
+    public void markAnnouncementAsRead(User user, Long announcementId) {
+        Announcement announcement = announcementRepository.findById(announcementId)
+                .orElseThrow(() -> new IllegalArgumentException("Announcement not found with id: " + announcementId));
+
+        if (!announcementReadRepository.existsByUserAndAnnouncement(user, announcement)) {
+            AnnouncementRead read = new AnnouncementRead();
+            read.setUser(user);
+            read.setAnnouncement(announcement);
+            announcementReadRepository.save(read);
+        }
+    }
 }
