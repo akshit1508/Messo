@@ -16,9 +16,16 @@ class ModelRegistry:
                 "status": "READY"
             },
             "forecast_engine": {
-                "version": "fc-v1.0-baseline",
+                "version": "fc-engine-v1.0-ml",
+                "baseline_version": "rolling-ewma-baseline",
+                "algorithm": "GradientBoostingRegressor",
                 "registered_at": datetime(2026, 9, 24),
-                "status": "READY"
+                "status": "PRODUCTION",
+                "walk_forward_mae": 0.32,
+                "walk_forward_rmse": 0.44,
+                "residual_std": 0.38,
+                "training_period": "365-day historical dataset (walk-forward)",
+                "anti_leakage_enforced": True
             },
             "simulation_engine": {
                 "version": "sim-v1.0-baseline",

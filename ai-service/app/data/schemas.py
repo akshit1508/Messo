@@ -94,29 +94,56 @@ class InvestigationResponse(BaseModel):
 # ==========================================
 
 class ForecastRequest(BaseModel):
-    food_id: Optional[int] = None
-    food_name: Optional[str] = None
+    target: Optional[str] = Field(default="food_rating", description="Prediction target: food_rating, complaint_volume, poll_participation")
+    forecast_date: Optional[date] = Field(default=None, description="Specific target date to forecast (defaults to tomorrow)")
+    food: Optional[str] = Field(default=None, description="Food name alias")
+    food_name: Optional[str] = Field(default=None, description="Food name")
+    food_id: Optional[int] = Field(default=None, description="Food ID")
+    meal_type: Optional[str] = Field(default="Dinner", description="Meal type")
     horizon_days: int = Field(default=7, ge=1, le=30, description="Forecast horizon in days")
     metrics: List[str] = Field(
-        default=["average_rating", "complaint_probability"],
+        default_factory=lambda: ["food_rating"],
         description="Metrics to forecast"
     )
+
+    @model_validator(mode='before')
+    @classmethod
+    def reconcile_names(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if 'food' in values and values['food'] and not values.get('food_name'):
+                values['food_name'] = values['food']
+            elif 'food_name' in values and values['food_name'] and not values.get('food'):
+                values['food'] = values['food_name']
+        return values
 
 class ForecastDataPoint(BaseModel):
     forecast_date: date
     metric: str
+    target_entity: Optional[str] = None
     predicted_value: float
     confidence_interval_lower: float
     confidence_interval_upper: float
+    confidence: str = Field(default="MEDIUM", description="LOW, MEDIUM, HIGH")
 
 class ForecastResponse(BaseModel):
     forecast_id: str
-    food_name: Optional[str] = None
-    horizon_days: int
-    data_points: List[ForecastDataPoint]
-    assumptions: List[str]
-    model_version: str = "fc-engine-v1.0-interface"
-    computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    target: str = "food_rating"
+    entity: Optional[str] = None
+    meal_type: Optional[str] = None
+    forecast_date: Optional[date] = None
+    prediction: Optional[float] = None
+    lower_bound: Optional[float] = None
+    upper_bound: Optional[float] = None
+    confidence: str = "MEDIUM"
+    horizon_days: int = 1
+    data_points: List[ForecastDataPoint] = Field(default_factory=list)
+    model_version: str = "fc-engine-v1.0-ml"
+    baseline_model: str = "rolling-ewma-baseline"
+    feature_summary: Dict[str, Any] = Field(default_factory=dict)
+    top_features: List[Dict[str, Any]] = Field(default_factory=list)
+    data_status: str = "SUFFICIENT"
+    assumptions: List[str] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================
 # 3. SIMULATION ENGINE SCHEMAS
