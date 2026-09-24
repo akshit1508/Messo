@@ -39,23 +39,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-slate-50">
       <div className="w-full max-w-md">
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sky-600 text-white font-black text-xl tracking-wider shadow-sm mb-3">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white font-black text-xl tracking-wider shadow-sm mb-3">
             M
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             MESO
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm text-slate-500 mt-1">
             Hostel Mess Management & Student Feedback Platform
           </p>
         </div>
 
         {/* Login Card */}
-        <Card className="shadow-md">
+        <Card className="border border-slate-200/90 shadow-xs">
           <CardHeader>
             <CardTitle>Welcome back</CardTitle>
             <CardDescription>
@@ -65,7 +65,7 @@ export default function LoginPage() {
 
           <CardContent>
             {error && (
-              <Alert variant="error" className="mb-4">
+              <Alert variant="danger" className="mb-4">
                 {error}
               </Alert>
             )}
@@ -104,11 +104,11 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
+            <div className="mt-6 text-center text-sm text-slate-600">
               New hostel resident?{" "}
               <Link
                 href="/signup"
-                className="font-medium text-sky-600 hover:text-sky-500 hover:underline"
+                className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
               >
                 Create student account
               </Link>

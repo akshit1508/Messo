@@ -101,7 +101,7 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200/90 min-h-screen fixed left-0 top-0 bottom-0 z-20">
       {/* Brand Header */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-100 space-x-3">
+      <div className="h-16 flex items-center px-6 border-b border-slate-100 gap-3">
         <span className="text-2xl font-black tracking-tight text-blue-600">MESO</span>
         <span className="text-slate-300">|</span>
         <Badge variant="default" size="sm">
@@ -115,12 +115,12 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
           Student Portal
         </div>
         {STUDENT_NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== "/student/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-blue-50 text-blue-700 font-semibold shadow-xs"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -130,6 +130,9 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
                 {item.icon}
               </span>
               <span>{item.name}</span>
+              {isActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0 ml-auto" />
+              )}
             </Link>
           );
         })}
@@ -137,8 +140,8 @@ export function StudentSidebar({ onLogout }: { onLogout: () => void }) {
 
       {/* Student Profile & Sign Out Footer */}
       <div className="p-4 border-t border-slate-100 bg-slate-50/70">
-        <div className="flex items-center space-x-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm shrink-0">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-sm shrink-0 border border-blue-200/60">
             {currentUser?.email ? currentUser.email.charAt(0).toUpperCase() : "S"}
           </div>
           <div className="flex-1 min-w-0">

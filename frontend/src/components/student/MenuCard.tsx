@@ -30,12 +30,12 @@ export function MenuCard({
   emptyMessage,
 }: MenuCardProps) {
   return (
-    <Card className="flex flex-col justify-between h-full border border-gray-200 hover:border-gray-300 transition-colors shadow-sm">
-      <CardHeader className="pb-3 border-b border-gray-100">
+    <Card className="flex flex-col justify-between h-full border border-slate-200 hover:border-slate-300 transition-colors shadow-xs">
+      <CardHeader className="pb-3 border-b border-slate-100">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <CardTitle className="text-base font-semibold text-gray-900">{title}</CardTitle>
-            {date && <p className="text-xs text-gray-500 font-medium">{date}</p>}
+            <CardTitle className="text-base font-semibold text-slate-900">{title}</CardTitle>
+            {date && <p className="text-xs text-slate-500 font-medium">{date}</p>}
           </div>
           <Badge variant={statusBadgeVariant}>{statusBadgeText}</Badge>
         </div>
@@ -49,11 +49,11 @@ export function MenuCard({
                 {mealType}
               </span>
             )}
-            <h4 className="text-xl font-bold text-gray-900 leading-snug">{foodName}</h4>
+            <h4 className="text-xl font-bold text-slate-900 leading-snug">{foodName}</h4>
           </div>
         ) : (
           <div className="py-4 text-center">
-            <p className="text-sm text-gray-500 italic">{emptyMessage}</p>
+            <p className="text-sm text-slate-500 italic">{emptyMessage}</p>
           </div>
         )}
 

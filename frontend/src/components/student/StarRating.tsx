@@ -55,7 +55,7 @@ export function StarRating({
               className={`${sizeClasses[size]} ${
                 isFilled
                   ? "text-amber-400 fill-amber-400 drop-shadow-sm"
-                  : "text-gray-300 fill-gray-100"
+                  : "text-slate-300 fill-slate-100"
               } transition-colors`}
               viewBox="0 0 24 24"
               stroke="currentColor"
