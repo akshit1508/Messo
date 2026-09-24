@@ -154,11 +154,44 @@ class MenuProposalItem(BaseModel):
     meal_type: str
     proposed_food_name: str
 
-class SimulationRequest(BaseModel):
-    simulation_name: str
-    scenario_type: str = Field(..., description="MENU_REPETITION_CHANGE, CHEF_ROTATION, VENDOR_CHANGE")
-    proposed_schedule: List[MenuProposalItem]
-    monte_carlo_runs: int = Field(default=100, ge=10, le=1000)
+class ScenarioMeal(BaseModel):
+    meal: str = "Dinner"
+    items: List[str]
+
+class ScenarioChange(BaseModel):
+    change_type: str = "FOOD_REPLACEMENT"
+    field: Optional[str] = None
+    old_value: Optional[Any] = None
+    new_value: Optional[Any] = None
+
+class ScenarioComparisonPoint(BaseModel):
+    prediction: float
+    lower_bound: float
+    upper_bound: float
+    confidence: str = "MEDIUM"
+    p10: Optional[float] = None
+    p50: Optional[float] = None
+    p90: Optional[float] = None
+    std: Optional[float] = None
+
+class MonteCarloDistribution(BaseModel):
+    runs: int
+    mean: float
+    std: float
+    p10: float
+    p25: Optional[float] = None
+    p50: float
+    p75: Optional[float] = None
+    p90: float
+    probability_of_improvement: float
+    probability_of_rating_drop: float
+
+class SimulationDelta(BaseModel):
+    mean_delta: float
+    p10_delta: Optional[float] = None
+    p50_delta: Optional[float] = None
+    p90_delta: Optional[float] = None
+    direction: str = "NEUTRAL"
 
 class SimulatedOutcome(BaseModel):
     metric: str
@@ -168,12 +201,36 @@ class SimulatedOutcome(BaseModel):
     probability_of_rating_drop: float
     risk_level: str = Field(..., description="LOW, MODERATE, HIGH")
 
+class SimulationRequest(BaseModel):
+    simulation_name: Optional[str] = "Menu What-If Simulation"
+    scenario_type: Optional[str] = "FOOD_REPLACEMENT"
+    simulation_date: Optional[date] = None
+    meal_type: Optional[str] = "Dinner"
+    baseline_food: Optional[str] = None
+    scenario_food: Optional[str] = None
+    baseline_meal: Optional[ScenarioMeal] = None
+    scenario_meal: Optional[ScenarioMeal] = None
+    repetition_delta_days: Optional[int] = None
+    poll_vote_share_shift: Optional[float] = None
+    proposed_schedule: Optional[List[MenuProposalItem]] = None
+    runs: int = Field(default=1000, ge=10, le=10000)
+    monte_carlo_runs: Optional[int] = None
+
 class SimulationResponse(BaseModel):
     simulation_id: str
     simulation_name: str
-    outcomes: List[SimulatedOutcome]
-    key_tradeoffs: List[str]
-    model_version: str = "sim-engine-v1.0-interface"
+    scenario_type: str = "FOOD_REPLACEMENT"
+    simulation_date: Optional[date] = None
+    meal_type: Optional[str] = "Dinner"
+    baseline: ScenarioComparisonPoint
+    scenario: ScenarioComparisonPoint
+    delta: SimulationDelta
+    distribution: MonteCarloDistribution
+    confidence: str = "MEDIUM"
+    model_version: str = "sim-engine-v1.0-mc"
+    assumptions: List[str] = Field(default_factory=list)
+    key_tradeoffs: List[str] = Field(default_factory=list)
+    outcomes: List[SimulatedOutcome] = Field(default_factory=list)
     computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================

@@ -28,9 +28,13 @@ class ModelRegistry:
                 "anti_leakage_enforced": True
             },
             "simulation_engine": {
-                "version": "sim-v1.0-baseline",
+                "version": "sim-engine-v1.0-mc",
                 "registered_at": datetime(2026, 9, 24),
-                "status": "READY"
+                "status": "PRODUCTION",
+                "method": "Monte Carlo Uncertainty Simulation",
+                "default_runs": 1000,
+                "read_only_safety_enforced": True,
+                "percentile_outputs": ["p10", "p25", "p50", "p75", "p90"]
             }
         }
 
