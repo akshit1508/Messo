@@ -7,57 +7,87 @@ Conforms to the 4-tier explainability protocol:
 - CONFIDENCE
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import date, datetime
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Union
+from datetime import date, datetime, timezone
+from pydantic import BaseModel, Field, model_validator
 
 # ==========================================
 # EXPLAINABILITY BUILDING BLOCKS
 # ==========================================
 
 class DataWindowInfo(BaseModel):
-    start_date: date
-    end_date: date
-    sample_count: int = Field(..., description="Number of underlying records analyzed in this window")
+    target_start_date: date
+    target_end_date: date
+    target_sample_count: int = Field(default=0, description="Records analyzed in target window")
+    comparison_start_date: Optional[date] = None
+    comparison_end_date: Optional[date] = None
+    comparison_sample_count: int = Field(default=0, description="Records analyzed in comparison baseline window")
     cohort_filter: Optional[str] = None
 
 class EvidenceItem(BaseModel):
-    metric: str = Field(..., description="Name of empirical metric (e.g. food_frequency_7d, complaint_count_oil)")
+    signal: str = Field(..., description="Name of empirical metric (e.g. food_frequency_7d, complaint_count_oil)")
     target_entity: Optional[str] = Field(None, description="Food name or meal type if applicable")
-    observed_value: float = Field(..., description="Value measured during problem window")
-    baseline_value: float = Field(..., description="Baseline historical norm for comparison")
-    significance_p_value: Optional[float] = Field(None, description="Statistical significance p-value if computed")
-    notes: Optional[str] = None
+    before_value: float = Field(..., description="Value measured during comparison baseline window")
+    after_value: float = Field(..., description="Value measured during target problem window")
+    change: float = Field(..., description="Absolute change (after - before)")
+    relative_change_pct: float = Field(default=0.0, description="Percentage change ((after - before) / before * 100)")
+    p_value: Optional[float] = Field(None, description="Statistical significance p-value if applicable")
+    details: Optional[str] = None
 
 class PossibleFactor(BaseModel):
-    factor_id: str = Field(..., description="Machine-readable factor code (e.g. HIGH_OIL_PREPARATION)")
+    factor_id: str = Field(..., description="Machine-readable factor code (e.g. HIGH_OIL_PREPARATION, MENU_REPETITION_FATIGUE)")
     description: str = Field(..., description="Human-readable explanation of why this factor was identified")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Calibrated confidence score between 0.0 and 1.0")
+    confidence: str = Field(..., description="Explicit confidence tier: LOW, MEDIUM, HIGH")
+    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Calibrated numerical score between 0.0 and 1.0")
     supporting_evidence_indices: List[int] = Field(
         default_factory=list,
         description="Zero-indexed references into the parent evidence list supporting this factor"
     )
+
+class MetricSummary(BaseModel):
+    metric: str
+    current_value: float
+    previous_value: float
+    change: float
+    percent_change: float
+    p_value: Optional[float] = None
+    statistically_significant: bool = False
 
 # ==========================================
 # 1. ROOT CAUSE ENGINE SCHEMAS
 # ==========================================
 
 class InvestigationRequest(BaseModel):
-    target_metric: str = Field(..., description="Target metric to investigate (e.g. DINNER_RATING_DECLINE, COMPLAINT_SPIKE)")
+    metric: Optional[str] = Field(default="food_satisfaction", description="Target metric to investigate")
+    target_metric: Optional[str] = Field(default=None, description="Alias for metric")
     start_date: date
     end_date: date
-    meal_type: Optional[str] = Field(None, description="Optional meal filter: Breakfast, Lunch, Dinner")
-    food_id: Optional[int] = Field(None, description="Optional specific food item to investigate")
+    comparison_start_date: Optional[date] = Field(default=None, description="Baseline start date")
+    comparison_end_date: Optional[date] = Field(default=None, description="Baseline end date")
+    meal_type: Optional[str] = Field(default=None, description="Optional meal filter: Breakfast, Lunch, Dinner")
+    food_id: Optional[int] = Field(default=None, description="Optional specific food ID to investigate")
+    food_name: Optional[str] = Field(default=None, description="Optional specific food name to investigate")
+
+    @model_validator(mode='before')
+    @classmethod
+    def reconcile_metric_names(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if 'target_metric' in values and values['target_metric'] and not values.get('metric'):
+                values['metric'] = values['target_metric']
+            elif 'metric' in values and values['metric'] and not values.get('target_metric'):
+                values['target_metric'] = values['metric']
+        return values
 
 class InvestigationResponse(BaseModel):
     investigation_id: str
     target_metric: str
-    target_period: DataWindowInfo
+    metric_summary: MetricSummary
     observations: List[str] = Field(..., description="Direct factual shifts observed in metrics")
-    evidence: List[EvidenceItem] = Field(..., description="Empirical evidence supporting the investigation")
-    possible_factors: List[PossibleFactor] = Field(..., description="Ranked causal hypotheses with confidence")
-    model_version: str = "rc-engine-v1.0-interface"
-    computed_at: datetime = Field(default_factory=datetime.utcnow)
+    evidence: List[EvidenceItem] = Field(..., description="Traceable empirical evidence supporting findings")
+    possible_factors: List[PossibleFactor] = Field(..., description="Ranked candidate contributing factors")
+    data_window: DataWindowInfo
+    engine_version: str = "rc-engine-v2.0-statistical"
+    computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================
 # 2. FORECAST ENGINE SCHEMAS
@@ -86,7 +116,7 @@ class ForecastResponse(BaseModel):
     data_points: List[ForecastDataPoint]
     assumptions: List[str]
     model_version: str = "fc-engine-v1.0-interface"
-    computed_at: datetime = Field(default_factory=datetime.utcnow)
+    computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================
 # 3. SIMULATION ENGINE SCHEMAS
@@ -117,7 +147,7 @@ class SimulationResponse(BaseModel):
     outcomes: List[SimulatedOutcome]
     key_tradeoffs: List[str]
     model_version: str = "sim-engine-v1.0-interface"
-    computed_at: datetime = Field(default_factory=datetime.utcnow)
+    computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================
 # 4. FEATURE PIPELINE SCHEMAS
