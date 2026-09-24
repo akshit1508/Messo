@@ -67,7 +67,11 @@ export default function AdminIntelligencePage() {
   useEffect(() => {
     async function loadCatalog() {
       try {
-        const foodList = await getAvailableFoods();
+        const rawFoods = await getAvailableFoods();
+        const foodList: string[] = (Array.isArray(rawFoods) ? rawFoods : [])
+          .map((item: any) => (typeof item === "string" ? item : item?.name))
+          .filter((name: any): name is string => typeof name === "string" && name.trim().length > 0);
+
         if (foodList && foodList.length > 0) {
           setFoods(foodList);
           setFcFood(foodList[0]);
@@ -544,11 +548,14 @@ export default function AdminIntelligencePage() {
                     onChange={(e) => setFcFood(e.target.value)}
                     className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {foods.map((food) => (
-                      <option key={food} value={food}>
-                        {food}
-                      </option>
-                    ))}
+                    {foods.map((food) => {
+                      const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                      return (
+                        <option key={foodName} value={foodName}>
+                          {foodName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -812,11 +819,14 @@ export default function AdminIntelligencePage() {
                         onChange={(e) => setSimBaselineFood(e.target.value)}
                         className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {foods.map((food) => (
-                          <option key={food} value={food}>
-                            {food}
-                          </option>
-                        ))}
+                        {foods.map((food) => {
+                          const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                          return (
+                            <option key={foodName} value={foodName}>
+                              {foodName}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 
@@ -827,11 +837,14 @@ export default function AdminIntelligencePage() {
                         onChange={(e) => setSimScenarioFood(e.target.value)}
                         className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {foods.map((food) => (
-                          <option key={food} value={food}>
-                            {food}
-                          </option>
-                        ))}
+                        {foods.map((food) => {
+                          const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                          return (
+                            <option key={foodName} value={foodName}>
+                              {foodName}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
@@ -846,11 +859,14 @@ export default function AdminIntelligencePage() {
                         onChange={(e) => setSimBaselineFood(e.target.value)}
                         className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {foods.map((food) => (
-                          <option key={food} value={food}>
-                            {food}
-                          </option>
-                        ))}
+                        {foods.map((food) => {
+                          const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                          return (
+                            <option key={foodName} value={foodName}>
+                              {foodName}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 

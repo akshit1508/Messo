@@ -54,7 +54,13 @@ export async function getSimulationHistory(
 }
 
 export async function getAvailableFoods(): Promise<string[]> {
-  return request<string[]>("/api/admin/ai/foods", {
+  const data = await request<any[]>("/api/admin/ai/foods", {
     method: "GET",
   });
+  if (Array.isArray(data)) {
+    return data
+      .map((item) => (typeof item === "string" ? item : item?.name))
+      .filter((name): name is string => typeof name === "string" && name.trim().length > 0);
+  }
+  return [];
 }
