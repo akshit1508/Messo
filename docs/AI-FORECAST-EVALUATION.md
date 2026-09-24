@@ -1,4 +1,4 @@
-﻿# MESO Forecast Engine — Backtest Evaluation & Model Report
+# MESO Forecast Engine — Backtest Evaluation & Model Report
 
 **Generated:** 2026-09-24  
 **Engine:** Forecast Engine (MESO AI Batch 3)  
@@ -55,9 +55,10 @@ We compared three candidate architectures over the identical walk-forward test f
 | **Candidate 2: Gradient Boosting** | 80 estimators, learning rate 0.08, max depth 3 | **`0.32`** | **`0.44`** | **Selected Production Model** |
 
 ### Key Improvements:
-- **Baseline vs. ML MAE:** 0.44 -> 0.32 (**+27.3% accuracy gain**)
-- **Baseline vs. ML RMSE:** 0.59 -> 0.44 (**+25.4% error variance reduction**)
+- **Baseline vs. ML MAE:** 0.44 -> 0.32 (**27.3% MAE error reduction**)
+- **Baseline vs. ML RMSE:** 0.59 -> 0.44 (**25.4% error variance reduction**)
 - The Gradient Boosting model effectively captures non-linear repetition fatigue (e.g. repeated Dal Tadka within 48h drops rating by 0.35) which the rolling EWMA baseline treats linearly or lags behind.
+- Training and backtesting utilized 12 months of **synthetic student-style reviews** designed to mirror authentic mess dining patterns.
 
 ---
 

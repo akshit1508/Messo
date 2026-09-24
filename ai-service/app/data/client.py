@@ -204,3 +204,77 @@ class MesoDbClient:
             with conn.cursor() as cur:
                 cur.execute(query)
                 return pd.DataFrame(cur.fetchall())
+
+    def food_exists(self, food_name: str) -> bool:
+        """
+        Validates if a food name exists in the MESO database catalog (case-insensitive).
+        """
+        query = "SELECT id FROM foods WHERE LOWER(TRIM(name)) = LOWER(TRIM(%s)) LIMIT 1"
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, [food_name])
+                return cur.fetchone() is not None
+
+    def persist_simulation(self, sim_data: Dict[str, Any]) -> None:
+        """
+        Persists derived simulation results into the dedicated ai_simulation audit table.
+        Does not mutate any operational tables.
+        """
+        import json
+        query = """
+            INSERT INTO ai_simulation (
+                simulation_id, simulation_name, scenario_type, input_schedule,
+                projected_outcomes, risk_level, key_tradeoffs, model_version, created_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, [
+                    sim_data["simulation_id"],
+                    sim_data.get("simulation_name", "What-If Simulation"),
+                    sim_data.get("scenario_type", "FOOD_REPLACEMENT"),
+                    json.dumps(sim_data.get("input_schedule", {})),
+                    json.dumps(sim_data.get("projected_outcomes", {})),
+                    sim_data.get("risk_level", "LOW"),
+                    json.dumps(sim_data.get("key_tradeoffs", [])),
+                    sim_data.get("model_version", "sim-engine-v1.0-mc"),
+                    datetime.now()
+                ])
+            conn.commit()
+
+    def get_recent_simulations(self, limit: int = 15) -> List[Dict[str, Any]]:
+        """
+        Fetches recently persisted simulation results for admin history reporting.
+        """
+        import json
+        query = """
+            SELECT id, simulation_id, simulation_name, scenario_type, input_schedule,
+                   projected_outcomes, risk_level, key_tradeoffs, model_version, created_at
+            FROM ai_simulation
+            ORDER BY created_at DESC
+            LIMIT %s
+        """
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, [limit])
+                rows = cur.fetchall()
+                results = []
+                for r in rows:
+                    item = dict(r)
+                    if isinstance(item.get("input_schedule"), str):
+                        try:
+                            item["input_schedule"] = json.loads(item["input_schedule"])
+                        except Exception:
+                            pass
+                    if isinstance(item.get("projected_outcomes"), str):
+                        try:
+                            item["projected_outcomes"] = json.loads(item["projected_outcomes"])
+                        except Exception:
+                            pass
+                    if isinstance(item.get("key_tradeoffs"), str):
+                        try:
+                            item["key_tradeoffs"] = json.loads(item["key_tradeoffs"])
+                        except Exception:
+                            pass
+                    results.append(item)
+                return results

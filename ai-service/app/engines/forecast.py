@@ -425,21 +425,34 @@ class ForecastEngine:
             lower_bound = max(1.0, round(chosen_pred - 1.645 * sigma, 2))
             upper_bound = min(5.0, round(chosen_pred + 1.645 * sigma, 2))
 
-            # Horizon Data Points
+            # Horizon Data Points (evaluated independently with recalculated date-dependent features)
             data_points = []
             for d_idx in range(request.horizon_days):
                 curr_d = target_date + timedelta(days=d_idx)
-                # Adjust slightly for multi-day horizons based on weekend
-                shift = -0.10 if curr_d.weekday() >= 5 else 0.0
-                pt_pred = float(np.clip(round(chosen_pred + shift, 2), 1.0, 5.0))
+                curr_features = features.copy()
+                curr_dow = curr_d.weekday()
+                curr_features["day_of_week"] = float(curr_dow)
+                curr_features["is_weekend"] = 1.0 if curr_dow >= 5 else 0.0
+                curr_features["month"] = float(curr_d.month)
+                curr_features["days_since_last_served"] = float(features.get("days_since_last_served", 7.0) + d_idx)
+
+                if status in ["INSUFFICIENT_DATA", "NO_HISTORY"]:
+                    pt_pred = self.predict_baseline_ewma(curr_features)
+                else:
+                    pt_pred, _ = self.predict_ml(curr_features)
+
+                pt_lower = max(1.0, round(pt_pred - 1.645 * sigma, 2))
+                pt_upper = min(5.0, round(pt_pred + 1.645 * sigma, 2))
                 data_points.append(
                     ForecastDataPoint(
                         forecast_date=curr_d,
                         metric="food_rating",
                         target_entity=food_name,
                         predicted_value=pt_pred,
-                        confidence_interval_lower=max(1.0, round(pt_pred - 1.645 * sigma, 2)),
-                        confidence_interval_upper=min(5.0, round(pt_pred + 1.645 * sigma, 2)),
+                        prediction_interval_lower=pt_lower,
+                        prediction_interval_upper=pt_upper,
+                        confidence_interval_lower=pt_lower,
+                        confidence_interval_upper=pt_upper,
                         confidence=confidence
                     )
                 )
@@ -480,6 +493,8 @@ class ForecastEngine:
                         metric="complaint_volume",
                         target_entity="Mess Overall",
                         predicted_value=p,
+                        prediction_interval_lower=l,
+                        prediction_interval_upper=u,
                         confidence_interval_lower=l,
                         confidence_interval_upper=u,
                         confidence="HIGH"
@@ -495,6 +510,8 @@ class ForecastEngine:
                 prediction=pred,
                 lower_bound=lower,
                 upper_bound=upper,
+                prediction_interval_lower=lower,
+                prediction_interval_upper=upper,
                 confidence="HIGH",
                 horizon_days=request.horizon_days,
                 data_points=data_points,
@@ -522,6 +539,8 @@ class ForecastEngine:
                         metric="poll_participation",
                         target_entity="Student Body",
                         predicted_value=p,
+                        prediction_interval_lower=l,
+                        prediction_interval_upper=u,
                         confidence_interval_lower=l,
                         confidence_interval_upper=u,
                         confidence="HIGH"

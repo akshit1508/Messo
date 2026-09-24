@@ -235,3 +235,61 @@ async def test_secondary_targets(engine):
     assert p_res.target == "poll_participation"
     assert p_res.prediction > 0.0
     assert p_res.lower_bound <= p_res.prediction <= p_res.upper_bound
+
+# -----------------------------------------------------------------------------
+# TEST 12: Multi-day Feature Independence (Phase 2 Hardening)
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_multiday_feature_independence(engine):
+    # Forecast across 3 consecutive days: Friday, Saturday, Sunday
+    # 2026-06-19 (Friday), 2026-06-20 (Saturday), 2026-06-21 (Sunday)
+    req = ForecastRequest(
+        target="food_rating",
+        food_name="Paneer Butter Masala",
+        forecast_date=date(2026, 6, 19),
+        meal_type="Dinner",
+        horizon_days=3
+    )
+    res = await engine.predict(req)
+    assert len(res.data_points) == 3
+    dp1, dp2, dp3 = res.data_points
+
+    # Assert distinct evaluation dates
+    assert dp1.forecast_date == date(2026, 6, 19)
+    assert dp2.forecast_date == date(2026, 6, 20)
+    assert dp3.forecast_date == date(2026, 6, 21)
+
+    # Re-evaluate individual date features independently
+    f1, _, _ = engine.build_features_for_food("Paneer Butter Masala", date(2026, 6, 19), "Dinner")
+    f2, _, _ = engine.build_features_for_food("Paneer Butter Masala", date(2026, 6, 20), "Dinner")
+    
+    # Friday is weekday (is_weekend = 0), Saturday is weekend (is_weekend = 1)
+    assert f1["is_weekend"] == 0.0
+    assert f2["is_weekend"] == 1.0
+    assert f1["day_of_week"] != f2["day_of_week"]
+
+# -----------------------------------------------------------------------------
+# TEST 13: Prediction Interval Terminology & Fields (Phase 2 Hardening)
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_prediction_interval_terminology(engine):
+    req = ForecastRequest(
+        target="food_rating",
+        food_name="Dal Tadka",
+        forecast_date=date(2026, 6, 25),
+        meal_type="Lunch",
+        horizon_days=2
+    )
+    res = await engine.predict(req)
+    # Check 90% prediction interval fields
+    assert res.prediction_interval_lower is not None
+    assert res.prediction_interval_upper is not None
+    assert res.prediction_interval_lower <= res.prediction <= res.prediction_interval_upper
+
+    for dp in res.data_points:
+        assert dp.prediction_interval_lower is not None
+        assert dp.prediction_interval_upper is not None
+        assert dp.prediction_interval_lower <= dp.predicted_value <= dp.prediction_interval_upper
+        # Backward compatibility aliases must match
+        assert dp.confidence_interval_lower == dp.prediction_interval_lower
+        assert dp.confidence_interval_upper == dp.prediction_interval_upper

@@ -212,7 +212,7 @@ async def test_uncertainty_guardrails(engine):
 
     # Multi-dish combination must also flag LOW confidence
     req_combo = SimulationRequest(
-        baseline_meal=ScenarioMeal(meal="Breakfast", items=["Poori", "Chana"]),
+        baseline_meal=ScenarioMeal(meal="Breakfast", items=["Poori", "Chole Bhature"]),
         scenario_meal=ScenarioMeal(meal="Breakfast", items=["Poori", "Aloo Gobi"]),
         simulation_date=date(2026, 8, 1),
         runs=500
@@ -229,14 +229,17 @@ async def test_uncertainty_guardrails(engine):
 async def test_no_database_mutation(engine):
     db = MesoDbClient()
     conn = db._get_connection()
-    
-    # Snapshot counts of operational tables before simulation
+
     operational_tables = ["daily_menu", "foods", "food_reviews", "complaints", "food_polls", "poll_votes", "poll_options", "users"]
     counts_before = {}
+    checksums_before = {}
     with conn.cursor() as cur:
         for tbl in operational_tables:
             cur.execute(f"SELECT COUNT(*) AS cnt FROM {tbl}")
             counts_before[tbl] = cur.fetchone()["cnt"]
+            cur.execute(f"CHECKSUM TABLE {tbl}")
+            chk = cur.fetchone()
+            checksums_before[tbl] = chk.get("Checksum") or chk.get("checksum")
 
     # Execute simulation
     req = SimulationRequest(
@@ -249,19 +252,24 @@ async def test_no_database_mutation(engine):
     )
     _ = await engine.simulate(req)
 
-    # Snapshot counts of operational tables after simulation
+    # Snapshot counts & checksums of operational tables after simulation
     counts_after = {}
+    checksums_after = {}
     with conn.cursor() as cur:
         for tbl in operational_tables:
             cur.execute(f"SELECT COUNT(*) AS cnt FROM {tbl}")
             counts_after[tbl] = cur.fetchone()["cnt"]
+            cur.execute(f"CHECKSUM TABLE {tbl}")
+            chk = cur.fetchone()
+            checksums_after[tbl] = chk.get("Checksum") or chk.get("checksum")
 
-    # Assert 100% equality
+    # Assert 100% strict equality of row counts and table checksums
     for tbl in operational_tables:
-        assert counts_before[tbl] == counts_after[tbl], f"Operational table '{tbl}' was mutated during simulation!"
+        assert counts_before[tbl] == counts_after[tbl], f"Operational table '{tbl}' row count mutated!"
+        assert checksums_before[tbl] == checksums_after[tbl], f"Operational table '{tbl}' content checksum mutated!"
 
 # -----------------------------------------------------------------------------
-# TEST 11: API Integration (FastAPI Endpoint)
+# TEST 11: API Integration & Validation Error Handling
 # -----------------------------------------------------------------------------
 def test_api_simulation_endpoint(client):
     payload = {
@@ -289,3 +297,100 @@ def test_api_simulation_endpoint(client):
     # Test alias endpoint /v1/simulations
     res_alias = client.post("/v1/simulations", json=payload)
     assert res_alias.status_code == 200
+
+# -----------------------------------------------------------------------------
+# TEST 12: Real Request Validation & Catalog Checks (Phase 3 Hardening)
+# -----------------------------------------------------------------------------
+def test_simulation_validation_errors(client):
+    # 1. Non-existent food in catalog
+    bad_food_payload = {
+        "scenario_type": "FOOD_REPLACEMENT",
+        "baseline_food": "FakeAlienDish999",
+        "scenario_food": "Rajma"
+    }
+    res = client.post("/api/v1/simulations", json=bad_food_payload)
+    assert res.status_code == 400
+    assert "does not exist in MESO food catalog" in res.json()["detail"]
+
+    # 2. Invalid meal type
+    bad_meal_payload = {
+        "scenario_type": "FOOD_REPLACEMENT",
+        "baseline_food": "Rajma",
+        "scenario_food": "Chole Bhature",
+        "meal_type": "MidnightSnack"
+    }
+    res2 = client.post("/api/v1/simulations", json=bad_meal_payload)
+    assert res2.status_code == 400
+    assert "Invalid meal_type" in res2.json()["detail"]
+
+    # 3. Invalid runs (< 10)
+    bad_runs_payload = {
+        "scenario_type": "FOOD_REPLACEMENT",
+        "baseline_food": "Rajma",
+        "scenario_food": "Chole Bhature",
+        "runs": 2
+    }
+    res3 = client.post("/api/v1/simulations", json=bad_runs_payload)
+    assert res3.status_code == 422 or res3.status_code == 400
+
+# -----------------------------------------------------------------------------
+# TEST 13: Simulation Persistence & History API (Phase 3 Hardening)
+# -----------------------------------------------------------------------------
+def test_simulation_persistence_and_history(client):
+    payload = {
+        "simulation_name": "Audit Log Check",
+        "scenario_type": "FOOD_REPLACEMENT",
+        "baseline_food": "Dal Tadka",
+        "scenario_food": "Paneer Butter Masala",
+        "runs": 200
+    }
+    res = client.post("/api/v1/simulations", json=payload)
+    assert res.status_code == 200
+    sim_id = res.json()["simulation_id"]
+
+    # Fetch history endpoint
+    h_res = client.get("/api/v1/simulations/history?limit=5")
+    assert h_res.status_code == 200
+    history = h_res.json()
+    assert isinstance(history, list)
+    assert len(history) > 0
+    # Must include the recently created simulation
+    assert any(item["simulation_id"] == sim_id for item in history)
+
+# -----------------------------------------------------------------------------
+# TEST 14: Paired Delta Distribution Spread (Phase 3 Hardening)
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_paired_delta_distribution_spread(engine):
+    req = SimulationRequest(
+        scenario_type="FOOD_REPLACEMENT",
+        baseline_food="Rajma",
+        scenario_food="Chole Bhature",
+        runs=1000
+    )
+    res = await engine.simulate(req)
+    delta = res.delta
+    # Empirical delta distribution percentiles must reflect real difference uncertainty
+    assert delta.p10_delta is not None
+    assert delta.p50_delta is not None
+    assert delta.p90_delta is not None
+    # p10_delta <= p50_delta <= p90_delta
+    assert delta.p10_delta <= delta.p50_delta <= delta.p90_delta
+
+# -----------------------------------------------------------------------------
+# TEST 15: Causal Language Safety (Phase 3 Hardening)
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_causal_language_safety(engine):
+    req = SimulationRequest(
+        scenario_type="FOOD_REPLACEMENT",
+        baseline_food="Rajma",
+        scenario_food="Chole Bhature",
+        runs=500
+    )
+    res = await engine.simulate(req)
+    # Check assumptions and tradeoffs do not claim definitive causal guarantees
+    combined_text = " ".join(res.assumptions + res.key_tradeoffs).lower()
+    assert "advisory" in combined_text or "model" in combined_text
+    assert "will definitely" not in combined_text
+    assert "guaranteed" not in combined_text

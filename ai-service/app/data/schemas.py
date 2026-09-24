@@ -121,9 +121,27 @@ class ForecastDataPoint(BaseModel):
     metric: str
     target_entity: Optional[str] = None
     predicted_value: float
-    confidence_interval_lower: float
-    confidence_interval_upper: float
+    # 90% Prediction Interval terminology
+    prediction_interval_lower: float = Field(default=1.0, description="Lower bound of 90% prediction interval")
+    prediction_interval_upper: float = Field(default=5.0, description="Upper bound of 90% prediction interval")
+    # Backward compatibility aliases
+    confidence_interval_lower: Optional[float] = None
+    confidence_interval_upper: Optional[float] = None
     confidence: str = Field(default="MEDIUM", description="LOW, MEDIUM, HIGH")
+
+    @model_validator(mode='before')
+    @classmethod
+    def reconcile_intervals(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if 'prediction_interval_lower' not in values and 'confidence_interval_lower' in values:
+                values['prediction_interval_lower'] = values['confidence_interval_lower']
+            if 'prediction_interval_upper' not in values and 'confidence_interval_upper' in values:
+                values['prediction_interval_upper'] = values['confidence_interval_upper']
+            if 'confidence_interval_lower' not in values and 'prediction_interval_lower' in values:
+                values['confidence_interval_lower'] = values['prediction_interval_lower']
+            if 'confidence_interval_upper' not in values and 'prediction_interval_upper' in values:
+                values['confidence_interval_upper'] = values['prediction_interval_upper']
+        return values
 
 class ForecastResponse(BaseModel):
     forecast_id: str
@@ -132,9 +150,12 @@ class ForecastResponse(BaseModel):
     meal_type: Optional[str] = None
     forecast_date: Optional[date] = None
     prediction: Optional[float] = None
+    # 90% Prediction Interval bounds
     lower_bound: Optional[float] = None
     upper_bound: Optional[float] = None
-    confidence: str = "MEDIUM"
+    prediction_interval_lower: Optional[float] = None
+    prediction_interval_upper: Optional[float] = None
+    confidence: str = "MEDIUM"  # Qualitative data-sufficiency tier: HIGH, MEDIUM, LOW
     horizon_days: int = 1
     data_points: List[ForecastDataPoint] = Field(default_factory=list)
     model_version: str = "fc-engine-v1.0-ml"
@@ -144,6 +165,20 @@ class ForecastResponse(BaseModel):
     data_status: str = "SUFFICIENT"
     assumptions: List[str] = Field(default_factory=list)
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @model_validator(mode='before')
+    @classmethod
+    def reconcile_bounds(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if 'prediction_interval_lower' not in values and 'lower_bound' in values:
+                values['prediction_interval_lower'] = values['lower_bound']
+            if 'prediction_interval_upper' not in values and 'upper_bound' in values:
+                values['prediction_interval_upper'] = values['upper_bound']
+            if 'lower_bound' not in values and 'prediction_interval_lower' in values:
+                values['lower_bound'] = values['prediction_interval_lower']
+            if 'upper_bound' not in values and 'prediction_interval_upper' in values:
+                values['upper_bound'] = values['prediction_interval_upper']
+        return values
 
 # ==========================================
 # 3. SIMULATION ENGINE SCHEMAS

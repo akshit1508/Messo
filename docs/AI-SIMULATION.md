@@ -1,4 +1,4 @@
-﻿# MESO Simulation Engine — Architecture & Specification
+# MESO Simulation Engine — Architecture & Specification
 
 **Date:** 2026-09-24  
 **Engine:** Simulation Engine (AI Batch 4)  
@@ -95,22 +95,30 @@ def apply_scenario(base_features: Dict[str, float], scenario: Dict[str, Any]) ->
 
 ---
 
-## 5. Monte Carlo Uncertainty Methodology
+## 5. Monte Carlo Uncertainty Methodology & Paired Common-Shock Sampling
 
-Rather than deterministic point estimates, the Simulation Engine models real-world uncertainty:
+Rather than independent draws that ignore correlated day-level operational factors, the Simulation Engine models correlated real-world conditions using **paired common-shock Monte Carlo sampling**:
 
-1. Let $\hat{y}_{\text{base}}$ and $\hat{y}_{\text{scen}}$ be the ML model predictions.
-2. Let $\sigma_{\text{base}}$ and $\sigma_{\text{scen}}$ be the empirical residual error standard deviations ($\sigma \approx 0.38$ for sufficient data, $\sigma \approx 0.65$ for sparse data).
-3. Draw $N$ samples (default $N = 1,000$):
-   $$Y_{\text{base}}^{(i)} \sim \text{Clip}(\mathcal{N}(\hat{y}_{\text{base}}, \sigma_{\text{base}}^2), 1.0, 5.0)$$
-   $$Y_{\text{scen}}^{(i)} \sim \text{Clip}(\mathcal{N}(\hat{y}_{\text{scen}}, \sigma_{\text{scen}}^2), 1.0, 5.0)$$
+1. Let $\hat{y}_{\text{base}}$ and $\hat{y}_{\text{scen}}$ be the ML model predictions for baseline and scenario states.
+2. Let $\sigma_{\text{shared}} \approx 0.22$ represent shared kitchen shocks (e.g. ambient weather, student exam stress, kitchen staff attendance).
+3. Let $\sigma_{\text{base, resid}}$ and $\sigma_{\text{scen, resid}}$ represent dish-specific preparation variances.
+4. For each Monte Carlo iteration $i \in \{1, \dots, N\}$ (default $N = 1,000$):
+   $$\epsilon_{\text{shared}}^{(i)} \sim \mathcal{N}(0, \sigma_{\text{shared}}^2)$$
+   $$\epsilon_{\text{base}}^{(i)} \sim \mathcal{N}(0, \sigma_{\text{base, resid}}^2)$$
+   $$\epsilon_{\text{scen}}^{(i)} \sim \mathcal{N}(0, \sigma_{\text{scen, resid}}^2)$$
+   $$Y_{\text{base}}^{(i)} = \text{Clip}\left(\hat{y}_{\text{base}} + \epsilon_{\text{shared}}^{(i)} + \epsilon_{\text{base}}^{(i)}, 1.0, 5.0\right)$$
+   $$Y_{\text{scen}}^{(i)} = \text{Clip}\left(\hat{y}_{\text{scen}} + \epsilon_{\text{shared}}^{(i)} + \epsilon_{\text{scen}}^{(i)}, 1.0, 5.0\right)$$
    $$\Delta^{(i)} = Y_{\text{scen}}^{(i)} - Y_{\text{base}}^{(i)}$$
-4. Percentile outputs:
+5. Percentile outputs:
    - **P10:** 10th percentile (pessimistic outcome)
    - **P50:** Median outcome
    - **P90:** 90th percentile (optimistic outcome)
-   - **Probability of Improvement:** $\frac{1}{N} \sum \mathbb{I}(\Delta^{(i)} > 0)$
-   - **Probability of Rating Drop:** $\frac{1}{N} \sum \mathbb{I}(\Delta^{(i)} < 0)$
+   - **Paired Delta Distribution:** $P_{10}(\Delta)$, $P_{50}(\Delta)$, $P_{90}(\Delta)$ derived directly from the empirical differences $\Delta^{(i)}$.
+   - **Probability of Improvement:** $\frac{1}{N} \sum_{i=1}^N \mathbb{I}(\Delta^{(i)} > 0)$
+   - **Probability of Rating Drop:** $\frac{1}{N} \sum_{i=1}^N \mathbb{I}(\Delta^{(i)} < 0)$
+
+### 5.1 Audit Persistence (`ai_simulation`)
+While operational tables remain strictly immutable, simulation inputs, projected outcomes, risk level, and tradeoffs are non-intrusively recorded in the `ai_simulation` table for administrative review and auditability.
 
 ---
 
