@@ -17,6 +17,7 @@ Verifies:
 import sys
 import os
 import pytest
+from unittest.mock import patch
 from datetime import date
 from starlette.testclient import TestClient
 
@@ -356,9 +357,40 @@ def test_simulation_persistence_and_history(client):
     assert len(history) > 0
     # Must include the recently created simulation
     assert any(item["simulation_id"] == sim_id for item in history)
+    assert res.json().get("audit_persistence_status") == "PERSISTED"
+    assert res.json().get("audit_warning") is None
 
 # -----------------------------------------------------------------------------
-# TEST 14: Paired Delta Distribution Spread (Phase 3 Hardening)
+# TEST 14: Persistence Failure Graceful Handling (Phase 2 Hardening)
+# -----------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_persistence_failure_graceful_handling(engine):
+    req = SimulationRequest(
+        simulation_name="Failure Resilience Check",
+        scenario_type="FOOD_REPLACEMENT",
+        baseline_food="Rajma",
+        scenario_food="Chole Bhature",
+        runs=200
+    )
+    with patch.object(engine.db, "persist_simulation", side_effect=RuntimeError("Simulated DB connection drop")):
+        res = await engine.simulate(req)
+        # 1. Calculation must succeed independently and preserve full results
+        assert res.simulation_id is not None
+        assert res.baseline.prediction > 0
+        assert res.scenario.prediction > 0
+        assert res.delta.mean_delta is not None
+        assert res.distribution.runs == 200
+        # 2. Audit persistence must cleanly report FAILED status with user-safe warning
+        assert res.audit_persistence_status == "FAILED"
+        assert res.audit_warning is not None
+        assert "could not be persisted" in res.audit_warning
+        # 3. Must not leak DB credentials, passwords, or raw stack traces
+        assert "password" not in res.audit_warning.lower()
+        assert "traceback" not in res.audit_warning.lower()
+        assert "simulated db connection drop" not in res.audit_warning.lower()
+
+# -----------------------------------------------------------------------------
+# TEST 15: Paired Delta Distribution Spread (Phase 3 Hardening)
 # -----------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_paired_delta_distribution_spread(engine):
@@ -378,7 +410,7 @@ async def test_paired_delta_distribution_spread(engine):
     assert delta.p10_delta <= delta.p50_delta <= delta.p90_delta
 
 # -----------------------------------------------------------------------------
-# TEST 15: Causal Language Safety (Phase 3 Hardening)
+# TEST 16: Causal Language Safety (Phase 3 Hardening)
 # -----------------------------------------------------------------------------
 @pytest.mark.asyncio
 async def test_causal_language_safety(engine):

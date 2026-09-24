@@ -67,6 +67,14 @@ public class AiGatewayService {
                     .body(res.getBody());
         } catch (RestClientResponseException ex) {
             log.warn("AI service returned error {} for POST {}: {}", ex.getStatusCode(), path, ex.getResponseBodyAsString());
+            if (ex.getStatusCode().is5xxServerError()) {
+                Map<String, Object> err = Map.of(
+                        "status", HttpStatus.BAD_GATEWAY.value(),
+                        "error", "AI_SERVICE_ERROR",
+                        "message", "AI analysis service encountered an internal error. Please retry."
+                );
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(err);
+            }
             return ResponseEntity.status(ex.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(ex.getResponseBodyAsString());
@@ -75,7 +83,7 @@ public class AiGatewayService {
             Map<String, Object> err = Map.of(
                     "status", HttpStatus.SERVICE_UNAVAILABLE.value(),
                     "error", "AI_SERVICE_UNAVAILABLE",
-                    "message", "AI Microservice could not be reached at " + aiServiceUrl + ". Ensure FastAPI is running."
+                    "message", "AI analysis service is temporarily unavailable. Please retry."
             );
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(err);
         }
@@ -93,6 +101,14 @@ public class AiGatewayService {
                     .body(res.getBody());
         } catch (RestClientResponseException ex) {
             log.warn("AI service returned error {} for GET {}: {}", ex.getStatusCode(), path, ex.getResponseBodyAsString());
+            if (ex.getStatusCode().is5xxServerError()) {
+                Map<String, Object> err = Map.of(
+                        "status", HttpStatus.BAD_GATEWAY.value(),
+                        "error", "AI_SERVICE_ERROR",
+                        "message", "AI analysis service encountered an internal error. Please retry."
+                );
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(err);
+            }
             return ResponseEntity.status(ex.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(ex.getResponseBodyAsString());
@@ -101,7 +117,7 @@ public class AiGatewayService {
             Map<String, Object> err = Map.of(
                     "status", HttpStatus.SERVICE_UNAVAILABLE.value(),
                     "error", "AI_SERVICE_UNAVAILABLE",
-                    "message", "AI Microservice could not be reached at " + aiServiceUrl + ". Ensure FastAPI is running."
+                    "message", "AI analysis service is temporarily unavailable. Please retry."
             );
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(err);
         }

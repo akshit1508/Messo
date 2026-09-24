@@ -264,17 +264,17 @@ class MesoDbClient:
                     if isinstance(item.get("input_schedule"), str):
                         try:
                             item["input_schedule"] = json.loads(item["input_schedule"])
-                        except Exception:
+                        except (json.JSONDecodeError, TypeError):
                             pass
                     if isinstance(item.get("projected_outcomes"), str):
                         try:
                             item["projected_outcomes"] = json.loads(item["projected_outcomes"])
-                        except Exception:
+                        except (json.JSONDecodeError, TypeError):
                             pass
                     if isinstance(item.get("key_tradeoffs"), str):
                         try:
                             item["key_tradeoffs"] = json.loads(item["key_tradeoffs"])
-                        except Exception:
+                        except (json.JSONDecodeError, TypeError):
                             pass
                     results.append(item)
                 return results

@@ -154,6 +154,8 @@ export interface SimulationResponse {
   assumptions: string[];
   key_tradeoffs: string[];
   outcomes: SimulatedOutcome[];
+  audit_persistence_status?: "PERSISTED" | "FAILED" | "DISABLED";
+  audit_warning?: string;
   computed_at: string;
 }
 

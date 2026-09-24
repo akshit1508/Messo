@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simulation Engine Implementation (MESO AI Batch 4 & Hardening).
 Answers: 'WHAT IF WE CHANGE SOMETHING?'
 
@@ -13,9 +13,12 @@ Zero mutation of daily_menu, foods, food_reviews, complaints, or food_polls.
 """
 
 import uuid
+import logging
 from datetime import datetime, date, timedelta, timezone
 from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from app.data.schemas import (
     SimulationRequest,
@@ -392,7 +395,16 @@ class SimulationEngine:
                 "key_tradeoffs": tradeoffs,
                 "model_version": self.model_version
             })
-        except Exception:
-            pass  # Non-blocking audit log
+            response.audit_persistence_status = "PERSISTED"
+        except Exception as e:
+            # Production-safe logging: log error type without exposing database credentials, query strings, or stack traces
+            logger.error(
+                "Simulation audit persistence failed for simulation_id=%s. Cause: %s",
+                sim_id,
+                type(e).__name__
+            )
+            response.audit_persistence_status = "FAILED"
+            response.audit_warning = "Simulation completed successfully, but audit history could not be persisted to the database."
 
         return response
+

@@ -895,6 +895,13 @@ export default function AdminIntelligencePage() {
           {/* Simulation Results Output */}
           {simData && (
             <div className="space-y-6">
+              {simData.audit_persistence_status === "FAILED" && (
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-800 flex items-center justify-between">
+                  <span>⚠️ {simData.audit_warning || "Simulation completed successfully, but audit history could not be persisted to the database."}</span>
+                  <Badge variant="warning" size="sm">Audit Degraded</Badge>
+                </div>
+              )}
+
               {/* Comparative Side-by-Side Projection Card */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-slate-50 border-slate-200">

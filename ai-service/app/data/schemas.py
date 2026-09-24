@@ -266,6 +266,8 @@ class SimulationResponse(BaseModel):
     assumptions: List[str] = Field(default_factory=list)
     key_tradeoffs: List[str] = Field(default_factory=list)
     outcomes: List[SimulatedOutcome] = Field(default_factory=list)
+    audit_persistence_status: str = Field(default="PERSISTED", description="PERSISTED, FAILED, or DISABLED")
+    audit_warning: Optional[str] = Field(default=None, description="Safe user-facing warning if audit persistence failed")
     computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # ==========================================

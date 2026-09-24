@@ -82,4 +82,34 @@ class AdminAiApiControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(aiGatewayService, times(1)).getAvailableFoods();
     }
+
+    @Test
+    void testAiServiceUnavailableHandling() {
+        Map<String, Object> errBody = Map.of(
+                "status", 503,
+                "error", "AI_SERVICE_UNAVAILABLE",
+                "message", "AI analysis service is temporarily unavailable. Please retry."
+        );
+        when(aiGatewayService.runForecast(any())).thenReturn(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errBody));
+
+        ResponseEntity<Object> response = controller.runForecast(Map.of("food_name", "Rajma"));
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertEquals(errBody, response.getBody());
+    }
+
+    @Test
+    void testAiServiceBadGatewayHandling() {
+        Map<String, Object> errBody = Map.of(
+                "status", 502,
+                "error", "AI_SERVICE_ERROR",
+                "message", "AI analysis service encountered an internal error. Please retry."
+        );
+        when(aiGatewayService.runInvestigation(any())).thenReturn(ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(errBody));
+
+        ResponseEntity<Object> response = controller.runInvestigation(Map.of("start_date", "2026-03-01"));
+
+        assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
+        assertEquals(errBody, response.getBody());
+    }
 }
