@@ -711,7 +711,7 @@ export default function AdminIntelligencePage() {
                           rcData.metric_summary.statistically_significant ? "text-amber-800" : "text-slate-700"
                         }`}>
                           {rcData.metric_summary.statistically_significant
-                            ? "Potential Issues Identified"
+                            ? "Possible Contributing Factor Identified"
                             : "No Significant Degradation"}
                         </span>
                         <p className="text-[11px] text-slate-500 mt-0.5">
@@ -809,26 +809,43 @@ export default function AdminIntelligencePage() {
 
                             <p className="text-sm text-slate-800 font-medium">{factor.description}</p>
 
-                            <p className="text-[11px] text-slate-500">
-                              This score represents the strength and breadth of supporting empirical signals used to rank the factor. It is not the probability that the factor caused the outcome.
-                            </p>
-
-                            {/* Evidence signals count */}
-                            <div className="pt-2 border-t border-slate-200">
-                              <span className="text-xs font-semibold text-slate-700 block mb-1">
-                                Flagged Evidence ({supportingEvidence.length} supporting signals):
-                              </span>
-                              <div className="flex flex-wrap gap-2">
-                                {supportingEvidence.map((ev, sIdx) => (
-                                  <span key={sIdx} className="text-[11px] px-2 py-1 bg-white border border-slate-200 rounded font-mono text-slate-700">
-                                    {ev.signal} ({ev.before_value.toFixed(1)} → {ev.after_value.toFixed(1)})
-                                  </span>
-                                ))}
+                            {/* Section 3 Clear Boundary Immediately Below Factor Explanation */}
+                            <div className="pt-2 border-t border-slate-200 space-y-2">
+                              <div>
+                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
+                                  Why this was flagged
+                                </span>
+                                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                                  The factor was ranked because these historical signals were observed together in the selected comparison window.
+                                </p>
                               </div>
-                            </div>
 
-                            <div className="p-2.5 rounded bg-slate-100/80 border border-slate-200 text-[11px] text-slate-600">
-                              <strong>Statistical Boundary:</strong> Associated with the observed outcome in historical data; this does not prove causation.
+                              <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                                <span className="font-bold text-amber-800 shrink-0">Important:</span>
+                                <span className="text-amber-800 leading-relaxed">
+                                  This association does not prove that the factor caused the rating decline.
+                                </span>
+                              </div>
+
+                              <p className="text-[11px] text-slate-500">
+                                Model Evidence Confidence ({(factor.confidence_score * 100).toFixed(0)}%) represents the strength and breadth of supporting empirical signals used to rank the factor. It is not the probability that the factor caused the outcome.
+                              </p>
+
+                              {/* Flagged Evidence chips */}
+                              {supportingEvidence.length > 0 && (
+                                <div className="pt-1">
+                                  <span className="text-xs font-semibold text-slate-700 block mb-1">
+                                    Supporting signals ({supportingEvidence.length}):
+                                  </span>
+                                  <div className="flex flex-wrap gap-2">
+                                    {supportingEvidence.map((ev, sIdx) => (
+                                      <span key={sIdx} className="text-[11px] px-2 py-1 bg-white border border-slate-200 rounded font-mono text-slate-700 shadow-2xs">
+                                        {ev.signal} ({ev.before_value.toFixed(1)} → {ev.after_value.toFixed(1)})
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );

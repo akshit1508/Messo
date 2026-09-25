@@ -267,7 +267,7 @@ class RootCauseEngine:
             possible_factors.append(
                 PossibleFactor(
                     factor_id="HIGH_OIL_PREPARATION",
-                    description="Excessive oil or grease in food preparation—particularly evident in evening curries and dal dishes—is strongly correlated with negative feedback.",
+                    description="Higher oil/greasiness complaint activity was observed alongside lower food-rating signals, particularly for dinner and dal dishes.",
                     confidence=conf_tier,
                     confidence_score=conf_score,
                     supporting_evidence_indices=supporting_indices
