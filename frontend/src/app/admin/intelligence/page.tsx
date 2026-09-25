@@ -481,93 +481,6 @@ export default function AdminIntelligencePage() {
         </nav>
       </div>
 
-      {/* Top Banner and KPI Cards only shown for Simulation */}
-      {activeTab === "simulation" && (
-        <>
-          {/* Portfolio / Demo Friendly Overview Banner */}
-          <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-5 shadow-2xs">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-700">MESO Intelligence</span>
-                <h2 className="text-base font-semibold text-slate-900 mt-0.5">
-                  Evidence-Based Feedback Analytics
-                </h2>
-                <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                  Three analytical engines turn historical student feedback into evidence, forecasts, and hypothetical scenarios.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-                  <span className="text-[11px] font-bold text-blue-600 block">WHY?</span>
-                  <p className="text-xs text-slate-700 font-medium">Investigate measurable patterns</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-                  <span className="text-[11px] font-bold text-emerald-600 block">WHAT NEXT?</span>
-                  <p className="text-xs text-slate-700 font-medium">Forecast future outcomes with uncertainty</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-                  <span className="text-[11px] font-bold text-indigo-600 block">WHAT IF?</span>
-                  <p className="text-xs text-slate-700 font-medium">Simulate hypothetical changes without modifying operational data</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Level Operational KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-blue-500">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Benchmark</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-bold text-slate-900">3.78 ★</span>
-                  <span className="text-xs text-slate-500">7-Day Rolling Avg</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-2">Synthetic student-style reviews</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Forecasted Horizon</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-bold text-slate-900">
-                    {fcData?.prediction ? `${fcData.prediction.toFixed(2)} ★` : "3.84 ★"}
-                  </span>
-                  <span className="text-xs text-emerald-600 font-medium">90% Prediction Interval</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-2">
-                  {fcData?.prediction_interval_lower
-                    ? `[${fcData.prediction_interval_lower.toFixed(2)} - ${fcData.prediction_interval_upper?.toFixed(2)}]`
-                    : "[3.52 - 4.16] (Gradient Boosting)"}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-indigo-500">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Accuracy Benchmark</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-bold text-indigo-600">27.3%</span>
-                  <span className="text-xs text-slate-500">MAE Error Reduction</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-2">Compared to EWMA Baseline</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-amber-500">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Simulation Safety</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-bold text-slate-900">Zero Mutation</span>
-                  <span className="text-xs text-amber-600 font-medium">Read-Only</span>
-                </div>
-                <p className="text-xs text-slate-400 mt-2">Logs to ai_simulation table</p>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-
       {/* ========================================================================= */}
       {/* SECTION 1: ROOT CAUSE ENGINE (WHY?) */}
       {/* ========================================================================= */}
@@ -1515,100 +1428,59 @@ export default function AdminIntelligencePage() {
       {/* ========================================================================= */}
       {activeTab === "simulation" && (
         <div className="space-y-6">
-          {/* Top WHAT IF Banner & Visual Conceptual Flow */}
-          <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-blue-50/60 to-purple-50/50 p-5 space-y-4">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">WHAT IF?</span>
-              <h3 className="text-base font-bold text-slate-900 mt-0.5">
-                Simulate Menu Adjustments in Virtual Space
-              </h3>
-              <p className="text-xs text-slate-600 mt-1">
-                Test a hypothetical menu change without changing operational data.
-              </p>
-            </div>
-
-            {/* Visual Step-by-Step Flow */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
-              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase block">Step 1</span>
-                <span className="font-bold text-slate-800">CURRENT STATE</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">Historical baseline data</p>
-              </div>
-              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
-                <span className="text-[10px] font-bold text-indigo-500 uppercase block">Step 2</span>
-                <span className="font-bold text-indigo-700">SIMULATED CHANGE</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">Hypothetical menu shift</p>
-              </div>
-              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
-                <span className="text-[10px] font-bold text-blue-500 uppercase block">Step 3</span>
-                <span className="font-bold text-blue-700">MONTE CARLO EXP</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">Repeated stochastic runs</p>
-              </div>
-              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
-                <span className="text-[10px] font-bold text-emerald-500 uppercase block">Step 4</span>
-                <span className="font-bold text-emerald-700">POSSIBLE OUTCOMES</span>
-                <p className="text-[11px] text-slate-500 mt-0.5">P10 - P90 distribution</p>
-              </div>
-            </div>
+          {/* Header */}
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              WHAT IF?
+            </span>
+            <h2 className="text-xl font-bold text-slate-900">
+              What could happen if we change the menu?
+            </h2>
+            <p className="text-xs text-slate-600">
+              Test a hypothetical menu change using historical data without changing the live menu or student feedback.
+            </p>
           </div>
 
-          {/* Safe Mode Guardrail Banner */}
-          <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 text-xs sm:text-sm text-amber-900">
-            <span className="text-xl">🛡️</span>
-            <div>
-              <p className="font-bold">Zero Operational Mutation Guaranteed</p>
-              <p className="text-xs text-amber-800 mt-0.5">
-                Simulations run completely in virtual state against historical features. No changes are committed to operational menu schedules,
-                foods, or ratings tables. Completed simulation outcomes are safely persisted to the <code className="bg-amber-100 px-1 rounded">ai_simulation</code> audit table.
-              </p>
-            </div>
-          </div>
-
-          {/* Visual Scenario Builder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Visual Scenario Builder</CardTitle>
-              <p className="text-xs text-slate-500">
-                Simulate the statistical effect of menu substitutions, serving interval changes, and multi-dish combinations before committing.
+          {/* Scenario Builder */}
+          <Card className="border border-slate-200">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900">
+                TRY A MENU CHANGE
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Choose a current dish and a proposed replacement to explore a hypothetical menu change.
               </p>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-5">
               <form onSubmit={handleRunSimulation} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Scenario Type</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Scenario
+                    </label>
                     <select
                       value={simType}
                       onChange={(e) => setSimType(e.target.value as any)}
                       className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="FOOD_REPLACEMENT">Food Replacement (A → B)</option>
-                      <option value="REPETITION_CHANGE">Repetition Spacing Adjustment</option>
-                      <option value="MEAL_COMBINATION">Meal Combination Test</option>
+                      <option value="FOOD_REPLACEMENT">Replace a dish</option>
+                      <option value="REPETITION_CHANGE">Change serving spacing</option>
+                      <option value="MEAL_COMBINATION">Pair dishes in a meal</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Scenario Name</label>
-                    <input
-                      type="text"
-                      value={simName}
-                      onChange={(e) => setSimName(e.target.value)}
-                      placeholder="e.g., Switch Chole to Paneer"
-                      className="w-full text-sm rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Monte Carlo Iterations</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Simulation runs
+                    </label>
                     <select
                       value={simRuns}
                       onChange={(e) => setSimRuns(Number(e.target.value))}
                       className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value={500}>500 Runs (Fast)</option>
-                      <option value={1000}>1,000 Runs (Standard)</option>
-                      <option value={2000}>2,000 Runs (High Precision)</option>
+                      <option value={500}>500 runs (fast)</option>
+                      <option value={1000}>1,000 runs (standard)</option>
+                      <option value={2000}>2,000 runs (higher precision)</option>
                     </select>
                   </div>
                 </div>
@@ -1617,7 +1489,9 @@ export default function AdminIntelligencePage() {
                 {simType === "FOOD_REPLACEMENT" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Baseline Dish (Existing)</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Current dish
+                      </label>
                       <select
                         value={simBaselineFood}
                         onChange={(e) => setSimBaselineFood(e.target.value)}
@@ -1635,7 +1509,9 @@ export default function AdminIntelligencePage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Proposed Replacement Dish</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Replace with
+                      </label>
                       <select
                         value={simScenarioFood}
                         onChange={(e) => setSimScenarioFood(e.target.value)}
@@ -1657,7 +1533,9 @@ export default function AdminIntelligencePage() {
                 {simType === "REPETITION_CHANGE" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Target Dish</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Current dish
+                      </label>
                       <select
                         value={simBaselineFood}
                         onChange={(e) => setSimBaselineFood(e.target.value)}
@@ -1676,7 +1554,7 @@ export default function AdminIntelligencePage() {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Repetition Interval Shift: {simRepetitionDelta > 0 ? `+${simRepetitionDelta}` : simRepetitionDelta} Days
+                        Spacing shift (days): {simRepetitionDelta > 0 ? `+${simRepetitionDelta}` : simRepetitionDelta} days
                       </label>
                       <input
                         type="range"
@@ -1688,246 +1566,459 @@ export default function AdminIntelligencePage() {
                         className="w-full h-2 bg-slate-300 rounded-lg cursor-pointer"
                       />
                       <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                        <span>-3 Days (Serve More Frequently)</span>
-                        <span>0 (No Change)</span>
-                        <span>+5 Days (Space Out Serving)</span>
+                        <span>-3 days (more frequent)</span>
+                        <span>0 (no change)</span>
+                        <span>+5 days (spaced out)</span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-end">
+                {simType === "MEAL_COMBINATION" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 border border-slate-200">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        First dish
+                      </label>
+                      <select
+                        value={simBaselineFood}
+                        onChange={(e) => setSimBaselineFood(e.target.value)}
+                        className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {foods.map((food) => {
+                          const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                          return (
+                            <option key={foodName} value={foodName}>
+                              {foodName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Second dish
+                      </label>
+                      <select
+                        value={simScenarioFood}
+                        onChange={(e) => setSimScenarioFood(e.target.value)}
+                        className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {foods.map((food) => {
+                          const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                          return (
+                            <option key={foodName} value={foodName}>
+                              {foodName}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom action row: Calm safety note + Run Button */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <span className="text-slate-400">🔒</span>
+                    <span>Simulation only — your live menu, foods and ratings are not changed.</span>
+                  </div>
                   <Button
                     type="submit"
                     variant="primary"
                     size="md"
                     isLoading={simLoading}
                   >
-                    Run Virtual Simulation
+                    Run Simulation
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
 
-          {simError && <ErrorState title="Simulation Error" message={simError} onRetry={handleRunSimulation} />}
+          {/* Error display */}
+          {simError && (
+            <ErrorState
+              title="Couldn't run the simulation."
+              message="Please try again."
+              onRetry={handleRunSimulation}
+            />
+          )}
+
+          {/* Empty state before simulation runs */}
+          {!simData && !simLoading && !simError && (
+            <EmptyState
+              title="What If?"
+              description="Choose a current dish and a proposed replacement to explore a hypothetical menu change."
+            />
+          )}
 
           {/* Simulation Results Output */}
           {simData && (
             <div className="space-y-6">
               {simData.audit_persistence_status === "FAILED" && (
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-800 flex items-center justify-between">
-                  <span>⚠️ {simData.audit_warning || "Simulation completed successfully, but audit history could not be persisted to the database."}</span>
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-center justify-between">
+                  <span>⚠️ Simulation completed successfully, but audit history could not be saved.</span>
                   <Badge variant="warning" size="sm">Audit Degraded</Badge>
                 </div>
               )}
 
-              {/* BASELINE VS SCENARIO */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-semibold text-slate-500 uppercase">Baseline State</span>
-                    <div className="mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{simData.baseline.prediction.toFixed(2)} ★</span>
+              {/* 1. WHAT COULD HAPPEN? */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <div>
+                      <CardTitle className="text-base font-bold text-slate-900">
+                        WHAT COULD HAPPEN?
+                      </CardTitle>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Estimated comparison between current menu and the simulated change.
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 font-mono">
-                      90% Interval: [{simData.baseline.lower_bound.toFixed(2)} — {simData.baseline.upper_bound.toFixed(2)}]
-                    </p>
-                    <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-200">
-                      Expected outcome under the current menu/data conditions.
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50/50 border-blue-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-semibold text-blue-700 uppercase">Projected Scenario</span>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-blue-900">{simData.scenario.prediction.toFixed(2)} ★</span>
-                      <span className="text-xs font-semibold text-blue-700">(Central scenario estimate)</span>
-                    </div>
-                    <p className="text-xs text-blue-700 mt-1 font-mono">
-                      90% Interval: [{simData.scenario.lower_bound.toFixed(2)} — {simData.scenario.upper_bound.toFixed(2)}]
-                    </p>
-                    <p className="text-xs text-blue-900 mt-2 pt-2 border-t border-blue-200">
-                      Expected outcome under the hypothetical change. (Note: Central scenario estimate is distinct from the Monte Carlo P50 median below).
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-semibold text-slate-500 uppercase">Expected Net Shift</span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className={`text-2xl font-bold ${simData.delta.mean_delta >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                        {simData.delta.mean_delta > 0 ? "+" : ""}
-                        {simData.delta.mean_delta.toFixed(2)} ★
+                    {simData.outcomes?.[0]?.risk_level && (
+                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          Simulation Risk:
+                        </span>
+                        <Badge
+                          variant={
+                            simData.outcomes[0].risk_level === "HIGH"
+                              ? "warning"
+                              : simData.outcomes[0].risk_level === "MODERATE"
+                              ? "warning"
+                              : "success"
+                          }
+                          className="text-[11px]"
+                        >
+                          {simData.outcomes[0].risk_level === "HIGH"
+                            ? "Higher Uncertainty"
+                            : simData.outcomes[0].risk_level === "MODERATE"
+                            ? "Moderate"
+                            : "Low"}
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-5 space-y-4">
+                  {/* 3-Part Comparison: Current -> Simulated -> Expected Difference */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Current State */}
+                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Current Menu
                       </span>
-                      <Badge variant={simData.delta.mean_delta >= 0 ? "success" : "danger"} size="sm">
-                        {simData.delta.direction}
-                      </Badge>
+                      <p className="text-sm font-semibold text-slate-800 truncate">
+                        {simBaselineFood}
+                      </p>
+                      <div className="pt-1">
+                        <span className="text-2xl font-extrabold text-slate-900 font-mono">
+                          {simData.baseline.prediction.toFixed(2)} ★
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 block pt-0.5">
+                        Current model baseline estimate
+                      </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Estimated difference between scenario and baseline.
-                    </p>
-                    <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-200">
-                      Represents model expectation under virtual conditions; not a guaranteed real-world improvement or decline.
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
 
-              {/* Monte Carlo Uncertainty Distribution & Percentiles */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monte Carlo Uncertainty Distribution ({simData.distribution.runs.toLocaleString()} Iterations)</CardTitle>
-                  <p className="text-xs text-slate-600">
-                    Monte Carlo simulation runs the same hypothetical scenario repeatedly under different random uncertainty conditions.
+                    {/* Simulated State */}
+                    <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 space-y-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 block">
+                        Simulated Change
+                      </span>
+                      <p className="text-sm font-semibold text-blue-950 truncate">
+                        {simType === "FOOD_REPLACEMENT"
+                          ? `Replace with ${simScenarioFood}`
+                          : simType === "REPETITION_CHANGE"
+                          ? `Spacing shift (${simRepetitionDelta > 0 ? `+${simRepetitionDelta}` : simRepetitionDelta} days)`
+                          : "Meal combination"}
+                      </p>
+                      <div className="pt-1">
+                        <span className="text-2xl font-extrabold text-blue-950 font-mono">
+                          {simData.scenario.prediction.toFixed(2)} ★
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-blue-800 block pt-0.5">
+                        Simulated scenario estimate
+                      </span>
+                    </div>
+
+                    {/* Expected Difference */}
+                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Expected Difference
+                      </span>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Estimated shift
+                      </p>
+                      <div className="pt-1 flex items-baseline gap-2">
+                        <span
+                          className={`text-2xl font-extrabold font-mono ${
+                            simData.delta.mean_delta > 0
+                              ? "text-emerald-600"
+                              : simData.delta.mean_delta < 0
+                              ? "text-rose-600"
+                              : "text-slate-800"
+                          }`}
+                        >
+                          {simData.delta.mean_delta > 0 ? "+" : ""}
+                          {simData.delta.mean_delta.toFixed(2)} ★
+                        </span>
+                        {simData.baseline.prediction > 0 && (
+                          <span className="text-xs font-semibold text-slate-500">
+                            ({((simData.delta.mean_delta / simData.baseline.prediction) * 100).toFixed(1)}%)
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-slate-500 block pt-0.5">
+                        Estimated difference between scenario and current
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Plain-English explanation */}
+                  <p className="text-xs text-slate-600 leading-relaxed pt-1">
+                    Under the simulation assumptions, the proposed change produces an estimated difference of{" "}
+                    <strong className="text-slate-800 font-semibold font-mono">
+                      {simData.delta.mean_delta > 0 ? "+" : ""}
+                      {simData.delta.mean_delta.toFixed(2)} ★
+                    </strong>{" "}
+                    compared with the current menu baseline.
+                  </p>
+
+                  {simData.outcomes?.[0]?.risk_level && (
+                    <p className="text-[11px] text-slate-500">
+                      Simulation risk reflects the simulated downside/uncertainty under the model&apos;s assumptions.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 2. POSSIBLE OUTCOMES */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    POSSIBLE OUTCOMES
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    The simulation was repeated across {simData.distribution.runs.toLocaleString()} plausible historical conditions to show how the result can vary.
                   </p>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P10</p>
-                      <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p10.toFixed(2)} ★</p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">Lower-end simulated outcome</span>
+                <CardContent className="pt-5 space-y-5">
+                  {/* 3 Main Interpretative Anchors */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                        Lower End
+                      </span>
+                      <p className="text-xl font-bold text-slate-900 font-mono mt-1">
+                        {simData.distribution.p10.toFixed(2)} ★
+                      </p>
+                      <span className="text-[11px] text-slate-500 mt-0.5 block">
+                        P10 — lower end of the simulated distribution
+                      </span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P25</p>
-                      <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p25?.toFixed(2) || "—"} ★</p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">Lower quartile</span>
+
+                    <div className="p-3.5 rounded-lg bg-blue-50/70 border border-blue-200 text-center">
+                      <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wider block">
+                        Typical Outcome
+                      </span>
+                      <p className="text-xl font-bold text-blue-950 font-mono mt-1">
+                        {simData.distribution.p50.toFixed(2)} ★
+                      </p>
+                      <span className="text-[11px] text-blue-800 mt-0.5 block">
+                        P50 — middle of the simulated distribution
+                      </span>
                     </div>
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 col-span-2 sm:col-span-1">
-                      <p className="text-[11px] font-semibold text-blue-700">P50 (Median)</p>
-                      <p className="text-lg font-bold text-blue-900 mt-1">{simData.distribution.p50.toFixed(2)} ★</p>
-                      <span className="text-[10px] text-blue-700 font-medium block mt-0.5">Median of Monte Carlo simulated outcomes</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P75</p>
-                      <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p75?.toFixed(2) || "—"} ★</p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">Upper quartile</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P90</p>
-                      <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p90.toFixed(2)} ★</p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">Higher-end simulated outcome</span>
+
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                      <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                        Upper End
+                      </span>
+                      <p className="text-xl font-bold text-slate-900 font-mono mt-1">
+                        {simData.distribution.p90.toFixed(2)} ★
+                      </p>
+                      <span className="text-[11px] text-slate-500 mt-0.5 block">
+                        P90 — upper end of the simulated distribution
+                      </span>
                     </div>
                   </div>
 
-                  {/* Simulated Probability Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                    <div className="p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-emerald-900">Simulated Improvement Frequency:</span>
-                        <span className="text-base font-bold text-emerald-700">
-                          {(simData.distribution.probability_of_improvement * 100).toFixed(0)}%
-                        </span>
+                  {/* Visual Distribution Track: P10 ───── P25 ───── P50 ───── P75 ───── P90 */}
+                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
+                      <span>Simulated Outcome Range</span>
+                      <span className="font-mono text-slate-800 font-semibold">
+                        {simData.distribution.p10.toFixed(2)} ★ — {simData.distribution.p90.toFixed(2)} ★
+                      </span>
+                    </div>
+
+                    <div className="relative py-2">
+                      <div className="h-1.5 w-full bg-slate-200 rounded-full relative">
+                        <div className="h-full bg-blue-600 rounded-full w-full opacity-60" />
                       </div>
-                      <p className="text-emerald-800 mt-1">
-                        Percentage of simulated runs where the scenario outcome exceeded the baseline.
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-lg bg-rose-50/70 border border-rose-200 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-rose-900">Simulated Rating Drop Frequency:</span>
-                        <span className="text-base font-bold text-rose-700">
-                          {(simData.distribution.probability_of_rating_drop * 100).toFixed(0)}%
-                        </span>
+                      <div className="flex justify-between items-center text-xs mt-2 font-mono">
+                        <div className="text-left">
+                          <span className="text-[10px] text-slate-500 block">P10</span>
+                          <span className="font-bold text-slate-800">{simData.distribution.p10.toFixed(2)}</span>
+                        </div>
+                        {simData.distribution.p25 != null && (
+                          <div className="text-center">
+                            <span className="text-[10px] text-slate-500 block">P25</span>
+                            <span className="font-medium text-slate-700">{simData.distribution.p25.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <span className="text-[10px] font-bold text-blue-700 block">P50 (Median)</span>
+                          <span className="font-bold text-blue-900 text-sm">{simData.distribution.p50.toFixed(2)}</span>
+                        </div>
+                        {simData.distribution.p75 != null && (
+                          <div className="text-center">
+                            <span className="text-[10px] text-slate-500 block">P75</span>
+                            <span className="font-medium text-slate-700">{simData.distribution.p75.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-500 block">P90</span>
+                          <span className="font-bold text-slate-800">{simData.distribution.p90.toFixed(2)}</span>
+                        </div>
                       </div>
-                      <p className="text-rose-800 mt-1">
-                        Percentage of simulated runs where the scenario outcome was below the baseline.
-                      </p>
                     </div>
-                  </div>
-
-                  {/* Paired Delta Empirical Spread */}
-                  {simData.delta.p10_delta !== undefined && (
-                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-4">
-                      <span className="font-semibold">Paired Delta Empirical Spread:</span>
-                      <span>P10: <strong className={simData.delta.p10_delta < 0 ? "text-rose-600" : "text-emerald-600"}>{simData.delta.p10_delta > 0 ? "+" : ""}{simData.delta.p10_delta.toFixed(2)}</strong></span>
-                      <span>P50: <strong className={(simData.delta.p50_delta ?? 0) < 0 ? "text-rose-600" : "text-emerald-600"}>{(simData.delta.p50_delta ?? 0) > 0 ? "+" : ""}{(simData.delta.p50_delta ?? 0).toFixed(2)}</strong></span>
-                      <span>P90: <strong className={(simData.delta.p90_delta ?? 0) < 0 ? "text-rose-600" : "text-emerald-600"}>{(simData.delta.p90_delta ?? 0) > 0 ? "+" : ""}{(simData.delta.p90_delta ?? 0).toFixed(2)}</strong></span>
-                      <span className="text-[11px] text-slate-400 italic">Common-shock Monte Carlo distribution</span>
-                    </div>
-                  )}
-
-                  <div className="p-3 rounded-lg bg-slate-100 text-[11px] text-slate-600">
-                    <strong>Boundary Notice:</strong> Simulated frequencies represent Monte Carlo iterations under modelled uncertainty; they are not real-world probability guarantees.
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Trade-offs & Causal Language Safety Notice */}
-              <div className="p-4 rounded-lg bg-slate-100 border border-slate-300 text-xs text-slate-700 space-y-2">
-                <p className="font-semibold text-slate-800">Causal Language & Statistical Boundaries:</p>
-                <p className="leading-relaxed">
-                  Under the stated assumptions, the model projects an expected shift of{" "}
-                  <strong>{simData.delta.mean_delta > 0 ? "+" : ""}{simData.delta.mean_delta.toFixed(2)} ★</strong>.
-                  This represents a statistical forecast based on historical feature correlations and Monte Carlo perturbation.
-                  Actual meal outcomes will depend on daily kitchen preparation fidelity, ingredient batches, and student attendance.
+              {/* 3. WHAT DOES THIS MEAN? */}
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <span className="font-bold uppercase tracking-wider text-slate-800 block">
+                  WHAT DOES THIS MEAN?
+                </span>
+                <p className="text-slate-700 leading-relaxed">
+                  Under the simulation assumptions, {simType === "FOOD_REPLACEMENT" ? `replacing ${simBaselineFood} with ${simScenarioFood}` : "applying the proposed menu change"} produces an estimated{" "}
+                  <strong className="text-slate-900 font-semibold font-mono">
+                    {simData.delta.mean_delta > 0.05
+                      ? `positive shift (+${simData.delta.mean_delta.toFixed(2)} ★)`
+                      : simData.delta.mean_delta < -0.05
+                      ? `negative shift (${simData.delta.mean_delta.toFixed(2)} ★)`
+                      : `minimal difference (${simData.delta.mean_delta.toFixed(2)} ★)`}
+                  </strong>{" "}
+                  in the central simulated outcome. The simulated outcomes vary across the tested historical conditions.
                 </p>
-                {simData.key_tradeoffs && simData.key_tradeoffs.length > 0 && (
-                  <div className="pt-2 border-t border-slate-200">
-                    <span className="font-semibold text-slate-800">Key Tradeoffs Identified:</span>
-                    <ul className="list-disc list-inside mt-1 space-y-0.5 text-slate-600">
-                      {simData.key_tradeoffs.map((item, idx) => (
-                        <li key={idx}>{item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <p className="text-slate-500 leading-relaxed pt-0.5">
+                  This is a scenario estimate, not a prediction of what will definitely happen.
+                </p>
               </div>
+
+              {/* 4. ABOUT THIS SIMULATION */}
+              <details className="border border-slate-200 rounded-lg p-3 bg-white text-xs text-slate-600 group">
+                <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 flex items-center gap-1.5 select-none py-0.5">
+                  <span className="transition-transform group-open:rotate-90">▸</span>
+                  <span>About this simulation</span>
+                </summary>
+                <div className="mt-3 pt-2 border-t border-slate-100 space-y-1.5 text-slate-600 leading-relaxed">
+                  <p>• <strong>Historical data:</strong> The simulation references historical dining reviews and menu frequency patterns.</p>
+                  <p>• <strong>Hypothetical scenario:</strong> Tests a hypothetical scenario without changing operational schedules.</p>
+                  <p>• <strong>No live data changed:</strong> Live menu schedules, ingredients, and recorded reviews remain completely untouched.</p>
+                  <p>• <strong>Model assumptions:</strong> Results depend on model assumptions and preparation consistency.</p>
+                  <p>• <strong>Not guaranteed:</strong> Simulated outcomes represent statistical variance, not guaranteed future results.</p>
+                </div>
+              </details>
             </div>
           )}
 
-          {/* Historical Simulations Audit Log */}
-          <Card>
-            <CardHeader>
+          {/* 5. PREVIOUS SIMULATIONS (History table at bottom) */}
+          <Card className="border border-slate-200">
+            <CardHeader className="pb-3 border-b border-slate-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Historical Simulation Audit Log</CardTitle>
-                  <p className="text-xs text-slate-500">Persisted virtual runs from the <code className="text-blue-600">ai_simulation</code> table</p>
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    PREVIOUS SIMULATIONS
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Recent what-if simulation records.
+                  </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={loadHistory} isLoading={simHistoryLoading}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadHistory}
+                  isLoading={simHistoryLoading}
+                >
                   Refresh History
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               {simHistory.length === 0 ? (
-                <p className="text-xs text-slate-500 py-4 text-center">No simulation runs recorded yet.</p>
+                <p className="text-xs text-slate-500 py-4 text-center">
+                  No simulation runs recorded yet.
+                </p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs sm:text-sm">
-                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                       <tr>
-                        <th className="py-2 px-3 font-semibold">Simulation ID</th>
-                        <th className="py-2 px-3 font-semibold">Name</th>
-                        <th className="py-2 px-3 font-semibold">Scenario Type</th>
-                        <th className="py-2 px-3 font-semibold">Risk Level</th>
-                        <th className="py-2 px-3 font-semibold">Model Version</th>
-                        <th className="py-2 px-3 font-semibold">Timestamp</th>
+                        <th className="py-2.5 px-3">Scenario</th>
+                        <th className="py-2.5 px-3">Projected Change</th>
+                        <th className="py-2.5 px-3">Simulation Risk</th>
+                        <th className="py-2.5 px-3">Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {simHistory.map((item, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50/70">
-                          <td className="py-2 px-3 font-mono text-blue-600">{item.simulation_id}</td>
-                          <td className="py-2 px-3 font-medium text-slate-900">{item.simulation_name}</td>
-                          <td className="py-2 px-3 text-slate-600 font-mono text-xs">{item.scenario_type}</td>
-                          <td className="py-2 px-3">
-                            <Badge
-                              variant={item.risk_level === "HIGH" ? "danger" : item.risk_level === "MODERATE" ? "warning" : "success"}
-                              size="sm"
-                            >
-                              {item.risk_level}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3 text-slate-500 text-xs font-mono">{item.model_version}</td>
-                          <td className="py-2 px-3 text-slate-500 text-xs">{new Date(item.created_at).toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {simHistory.map((item, idx) => {
+                        const meanDelta = item.projected_outcomes?.delta?.mean_delta;
+                        const sched = item.input_schedule;
+                        let scenarioText = item.simulation_name;
+                        if (sched?.baseline_food && sched?.scenario_food && sched.baseline_food !== sched.scenario_food) {
+                          scenarioText = `Replace ${sched.baseline_food} → ${sched.scenario_food}`;
+                        } else if (sched?.baseline_food && item.scenario_type === "REPETITION_CHANGE") {
+                          scenarioText = `Adjust spacing for ${sched.baseline_food}`;
+                        } else if (item.simulation_name?.includes("Test") || item.simulation_name?.includes("Check")) {
+                          scenarioText = item.scenario_type ? item.scenario_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Menu Scenario";
+                        }
+
+                        const formattedDate = new Date(item.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        });
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50/70">
+                            <td className="py-2.5 px-3 font-medium text-slate-800">
+                              {scenarioText}
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-semibold">
+                              {meanDelta != null ? (
+                                <span className={meanDelta > 0 ? "text-emerald-600" : meanDelta < 0 ? "text-rose-600" : "text-slate-700"}>
+                                  {meanDelta > 0 ? "+" : ""}
+                                  {meanDelta.toFixed(2)} ★
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <Badge
+                                variant={
+                                  item.risk_level === "HIGH"
+                                    ? "warning"
+                                    : item.risk_level === "MODERATE"
+                                    ? "warning"
+                                    : "success"
+                                }
+                                size="sm"
+                              >
+                                {item.risk_level === "HIGH" ? "Higher Uncertainty" : item.risk_level === "MODERATE" ? "Moderate" : "Low"}
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-500">
+                              {formattedDate}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
