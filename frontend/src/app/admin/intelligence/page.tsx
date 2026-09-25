@@ -22,6 +22,33 @@ import {
   SimulationHistoryItem,
 } from "@/types/ai";
 
+const FEATURE_LABEL_MAP: Record<string, string> = {
+  food_frequency_14d: "How frequently this dish was served in the last 14 days",
+  days_since_last_served: "Days since this dish was last served",
+  food_last_served_mean: "Average rating when this dish was recently served",
+  food_30d_std: "Rating variability over the last 30 days",
+  food_all_time_mean: "Historical average rating",
+  food_7d_mean: "Average rating over the last 7 days",
+  food_30d_mean: "Average rating over the last 30 days",
+  food_frequency_7d: "Serving count in the last 7 days",
+  total_complaints_7d: "Total complaints received in the last 7 days",
+  oil_complaints_7d: "Oiliness complaints in the last 7 days",
+  poll_vote_share_recent: "Recent poll preference vote share",
+  day_of_week: "Day of week pattern",
+  is_weekend: "Weekend vs weekday pattern",
+  month: "Seasonal month indicator",
+  meal_type_code: "Meal type indicator (Breakfast, Lunch, Dinner)",
+};
+
+function getHumanReadableFeature(rawFeature: string): string {
+  if (FEATURE_LABEL_MAP[rawFeature]) {
+    return FEATURE_LABEL_MAP[rawFeature];
+  }
+  return rawFeature
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function AdminIntelligencePage() {
   const [activeTab, setActiveTab] = useState<"root_cause" | "forecast" | "simulation">("root_cause");
   const [foods, setFoods] = useState<string[]>([]);
@@ -197,6 +224,35 @@ export default function AdminIntelligencePage() {
         }
       />
 
+      {/* Portfolio / Demo Friendly Overview Banner */}
+      <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-5 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">MESO Intelligence</span>
+            <h2 className="text-base font-semibold text-slate-900 mt-0.5">
+              Evidence-Based Feedback Analytics
+            </h2>
+            <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+              Three analytical engines turn historical student feedback into evidence, forecasts, and hypothetical scenarios.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-blue-600 block">WHY?</span>
+              <p className="text-xs text-slate-700 font-medium">Investigate measurable patterns</p>
+            </div>
+            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-emerald-600 block">WHAT NEXT?</span>
+              <p className="text-xs text-slate-700 font-medium">Forecast future outcomes with uncertainty</p>
+            </div>
+            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+              <span className="text-[11px] font-bold text-indigo-600 block">WHAT IF?</span>
+              <p className="text-xs text-slate-700 font-medium">Simulate hypothetical changes without modifying operational data</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Top Level Operational KPI Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-l-4 border-l-blue-500">
@@ -359,161 +415,254 @@ export default function AdminIntelligencePage() {
           {/* Results Area */}
           {rcData && (
             <div className="space-y-6">
-              {/* Metric Shift Banner */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">Metric Under Investigation</span>
-                    <p className="text-lg font-bold text-slate-800 capitalize mt-1">
-                      {rcData.target_metric.replace(/_/g, " ")}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Investigation ID: <code className="text-blue-600">{rcData.investigation_id}</code>
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">Observed Window Delta</span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className={`text-2xl font-bold ${rcData.metric_summary.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                        {rcData.metric_summary.change > 0 ? "+" : ""}
-                        {rcData.metric_summary.change.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        ({rcData.metric_summary.previous_value.toFixed(2)} → {rcData.metric_summary.current_value.toFixed(2)})
-                      </span>
+              {/* SECTION 1: WHAT HAPPENED? */}
+              <Card className="border-l-4 border-l-blue-600">
+                <CardHeader className="pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Section 1</span>
+                      <CardTitle className="text-lg">WHAT HAPPENED?</CardTitle>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Relative Shift: {rcData.metric_summary.percent_change.toFixed(1)}%
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">Statistical Significance</span>
-                    <div className="mt-2">
-                      {rcData.metric_summary.statistically_significant ? (
-                        <Badge variant="danger" size="md">
-                          Significant (p = {rcData.metric_summary.p_value ? rcData.metric_summary.p_value.toFixed(4) : "<0.05"})
-                        </Badge>
-                      ) : (
-                        <Badge variant="neutral" size="md">
-                          Not Significant (Noise / Inconclusive)
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Samples: {rcData.data_window.target_sample_count} reviews evaluated
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Direct Factual Observations */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Direct Factual Observations</CardTitle>
+                    {rcData.metric_summary.statistically_significant ? (
+                      <Badge variant="danger" size="md">
+                        Statistically Significant (p = {rcData.metric_summary.p_value ? rcData.metric_summary.p_value.toFixed(4) : "<0.05"})
+                      </Badge>
+                    ) : (
+                      <Badge variant="neutral" size="md">
+                        Not Statistically Significant (Noise / Inconclusive)
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Target period ({rcData.data_window.target_start_date} to {rcData.data_window.target_end_date}) evaluated against baseline period ({rcData.data_window.comparison_start_date || "preceding period"}).
+                  </p>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2">
-                    {rcData.observations.map((obs, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
-                        <span className="text-blue-500 mt-0.5">•</span>
-                        <span>{obs}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">Target Metric</span>
+                      <p className="text-base font-bold text-slate-900 capitalize mt-1">
+                        {rcData.target_metric.replace(/_/g, " ")}
+                      </p>
+                      <span className="text-[11px] font-mono text-slate-500 truncate block">ID: {rcData.investigation_id}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">Shift Measured</span>
+                      <p className="text-base font-bold text-slate-900 mt-1">
+                        {rcData.metric_summary.previous_value.toFixed(2)} → {rcData.metric_summary.current_value.toFixed(2)}
+                      </p>
+                      <span className="text-[11px] text-slate-500">Baseline → Problem Window</span>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">Absolute & Relative Delta</span>
+                      <p className={`text-base font-bold mt-1 ${rcData.metric_summary.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                        {rcData.metric_summary.change > 0 ? "+" : ""}{rcData.metric_summary.change.toFixed(2)}{" "}
+                        <span className="text-xs font-medium">({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)</span>
+                      </p>
+                      <span className="text-[11px] text-slate-500">Measured change</span>
+                    </div>
+
+                    <div>
+                      <span className="text-xs font-semibold text-slate-500 uppercase">Evaluated Sample Size</span>
+                      <p className="text-base font-bold text-slate-900 mt-1">
+                        {rcData.data_window.target_sample_count} reviews
+                      </p>
+                      <span className="text-[11px] text-slate-500">vs {rcData.data_window.comparison_sample_count} baseline reviews</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Ranked Candidate Contributing Factors */}
+              {/* SECTION 2: WHAT DID THE DATA SHOW? */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Ranked Contributing Factors (Evidence-Based)</CardTitle>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Section 2</span>
+                  <CardTitle>WHAT DID THE DATA SHOW?</CardTitle>
+                  <p className="text-xs text-slate-500">
+                    Strongest factual signals and direct observations measured between baseline and problem periods.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Highlight Cards for Strongest Empirical Signals */}
+                  {rcData.evidence && rcData.evidence.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {rcData.evidence.slice(0, 6).map((ev, idx) => (
+                        <div key={idx} className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-slate-800 truncate">
+                              {ev.target_entity ? `${ev.target_entity} (${ev.signal})` : ev.signal}
+                            </span>
+                            <span className={`text-xs font-bold ${ev.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              {ev.change > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-2 text-sm">
+                            <span className="text-slate-500 font-mono text-xs">{ev.before_value.toFixed(2)}</span>
+                            <span className="text-slate-400">→</span>
+                            <span className="font-bold text-slate-900 font-mono">{ev.after_value.toFixed(2)}</span>
+                            <span className={`text-xs ${ev.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              ({ev.change > 0 ? "+" : ""}{ev.change.toFixed(2)})
+                            </span>
+                          </div>
+                          {ev.details && (
+                            <p className="text-[11px] text-slate-500 truncate">{ev.details}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Direct Factual Observations */}
+                  <div className="p-4 rounded-lg bg-blue-50/50 border border-blue-100 space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900">Direct Factual Observations</h4>
+                    <ul className="space-y-1.5">
+                      {rcData.observations.map((obs, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-blue-950">
+                          <span className="text-blue-500 mt-0.5">•</span>
+                          <span>{obs}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Traceable Empirical Evidence Table */}
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Complete Traceable Empirical Evidence</h4>
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-xs sm:text-sm">
+                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
+                          <tr>
+                            <th className="py-2 px-3 font-semibold">Signal</th>
+                            <th className="py-2 px-3 font-semibold">Target Entity</th>
+                            <th className="py-2 px-3 font-semibold">Baseline</th>
+                            <th className="py-2 px-3 font-semibold">Problem Window</th>
+                            <th className="py-2 px-3 font-semibold">Shift</th>
+                            <th className="py-2 px-3 font-semibold">Relative Change</th>
+                            <th className="py-2 px-3 font-semibold">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {rcData.evidence.map((ev, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/70">
+                              <td className="py-2 px-3 font-mono font-medium text-slate-900">{ev.signal}</td>
+                              <td className="py-2 px-3 text-slate-600">{ev.target_entity || "—"}</td>
+                              <td className="py-2 px-3 text-slate-600">{ev.before_value.toFixed(2)}</td>
+                              <td className="py-2 px-3 font-semibold text-slate-900">{ev.after_value.toFixed(2)}</td>
+                              <td className={`py-2 px-3 font-semibold ${ev.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                                {ev.change > 0 ? "+" : ""}{ev.change.toFixed(2)}
+                              </td>
+                              <td className="py-2 px-3 text-slate-600">{ev.relative_change_pct.toFixed(1)}%</td>
+                              <td className="py-2 px-3 text-slate-500 max-w-xs truncate">{ev.details || "—"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SECTION 3: POSSIBLE CONTRIBUTING FACTORS & SECTION 4: WHY THIS FACTOR WAS FLAGGED */}
+              <Card>
+                <CardHeader>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Section 3 & 4</span>
+                  <CardTitle>POSSIBLE CONTRIBUTING FACTORS</CardTitle>
+                  <p className="text-xs text-slate-500">
+                    Historical data shows an empirical association between these factors and the measured outcome. These are not proven causes.
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {rcData.possible_factors.length === 0 ? (
                       <p className="text-sm text-slate-500">No high-confidence anomaly factors detected in this window.</p>
                     ) : (
-                      rcData.possible_factors.map((factor, idx) => (
-                        <div key={idx} className="p-4 rounded-lg border border-slate-200 bg-slate-50/50 space-y-2">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <code className="text-xs font-bold text-slate-800 bg-white px-2 py-1 rounded border border-slate-300">
-                                {factor.factor_id}
-                              </code>
-                              <Badge
-                                variant={factor.confidence === "HIGH" ? "danger" : factor.confidence === "MEDIUM" ? "warning" : "neutral"}
-                                size="sm"
-                              >
-                                {factor.confidence} CONFIDENCE
-                              </Badge>
+                      rcData.possible_factors.map((factor, idx) => {
+                        const supportingEvidence = factor.supporting_evidence_indices
+                          ?.map((eIdx) => rcData.evidence[eIdx])
+                          .filter(Boolean) || [];
+
+                        return (
+                          <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <code className="text-xs font-bold text-slate-800 bg-white px-2 py-1 rounded border border-slate-300">
+                                  {factor.factor_id}
+                                </code>
+                                <Badge
+                                  variant={factor.confidence === "HIGH" ? "danger" : factor.confidence === "MEDIUM" ? "warning" : "neutral"}
+                                  size="sm"
+                                >
+                                  {factor.confidence} MODEL CONFIDENCE
+                                </Badge>
+                              </div>
+                              <span className="text-xs font-semibold text-slate-600">
+                                Model Evidence Confidence: {(factor.confidence_score * 100).toFixed(0)}%
+                              </span>
                             </div>
-                            <span className="text-xs font-semibold text-slate-600">
-                              Confidence Score: {(factor.confidence_score * 100).toFixed(0)}%
-                            </span>
-                          </div>
 
-                          <p className="text-sm text-slate-700">{factor.description}</p>
+                            <div>
+                              <span className="text-xs font-semibold text-slate-500 block uppercase mb-0.5">Possible Contributing Factor:</span>
+                              <p className="text-sm text-slate-800 font-medium">{factor.description}</p>
+                            </div>
 
-                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${
-                                factor.confidence === "HIGH" ? "bg-rose-500" : factor.confidence === "MEDIUM" ? "bg-amber-500" : "bg-slate-400"
-                              }`}
-                              style={{ width: `${Math.min(100, Math.max(10, factor.confidence_score * 100))}%` }}
-                            ></div>
+                            <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  factor.confidence === "HIGH" ? "bg-rose-500" : factor.confidence === "MEDIUM" ? "bg-amber-500" : "bg-slate-400"
+                                }`}
+                                style={{ width: `${Math.min(100, Math.max(10, factor.confidence_score * 100))}%` }}
+                              ></div>
+                            </div>
+
+                            {/* Section 4: Why this factor was flagged */}
+                            <div className="pt-2 border-t border-slate-200/80">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 block mb-2">
+                                WHY THIS FACTOR WAS FLAGGED ({supportingEvidence.length} supporting signals)
+                              </span>
+                              {supportingEvidence.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {supportingEvidence.map((ev, sIdx) => (
+                                    <div key={sIdx} className="p-2.5 rounded-lg bg-white border border-slate-200 text-xs space-y-1 shadow-2xs">
+                                      <div className="flex items-center justify-between font-medium">
+                                        <span className="text-slate-800 font-mono truncate">{ev.signal}</span>
+                                        <span className={ev.change < 0 ? "text-rose-600 font-bold" : "text-emerald-600 font-bold"}>
+                                          {ev.change > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%
+                                        </span>
+                                      </div>
+                                      <p className="text-slate-600">
+                                        {ev.target_entity && <span className="font-semibold text-slate-700">{ev.target_entity}: </span>}
+                                        {ev.before_value.toFixed(2)} → {ev.after_value.toFixed(2)}
+                                      </p>
+                                      {ev.details && <p className="text-[11px] text-slate-400 truncate">{ev.details}</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-400 italic">Correlated from overall window shifts.</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Traceable Evidence Table */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Traceable Empirical Evidence</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs sm:text-sm">
-                      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                        <tr>
-                          <th className="py-2.5 px-3 font-semibold">Signal</th>
-                          <th className="py-2.5 px-3 font-semibold">Target Entity</th>
-                          <th className="py-2.5 px-3 font-semibold">Baseline</th>
-                          <th className="py-2.5 px-3 font-semibold">Problem Window</th>
-                          <th className="py-2.5 px-3 font-semibold">Shift</th>
-                          <th className="py-2.5 px-3 font-semibold">Relative Change</th>
-                          <th className="py-2.5 px-3 font-semibold">Details</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {rcData.evidence.map((ev, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/70">
-                            <td className="py-2 px-3 font-mono font-medium text-slate-900">{ev.signal}</td>
-                            <td className="py-2 px-3 text-slate-600">{ev.target_entity || "—"}</td>
-                            <td className="py-2 px-3 text-slate-600">{ev.before_value.toFixed(2)}</td>
-                            <td className="py-2 px-3 font-semibold text-slate-900">{ev.after_value.toFixed(2)}</td>
-                            <td className={`py-2 px-3 font-semibold ${ev.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                              {ev.change > 0 ? "+" : ""}
-                              {ev.change.toFixed(2)}
-                            </td>
-                            <td className="py-2 px-3 text-slate-600">{ev.relative_change_pct.toFixed(1)}%</td>
-                            <td className="py-2 px-3 text-slate-500 max-w-xs truncate">{ev.details || "—"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* SECTION 5: STATISTICAL BOUNDARY */}
+              <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 text-xs sm:text-sm text-amber-900">
+                <span className="text-xl">⚠️</span>
+                <div>
+                  <p className="font-bold">STATISTICAL BOUNDARY & CAUSAL DISCLAIMER</p>
+                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                    Association in historical data does not prove causation.
+                    The result identifies possible contributing factors based on observed evidence and statistical correlation patterns.
+                    Model confidence scores reflect the strength and volume of supporting empirical signals, not the probability that a factor definitively caused the outcome.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -603,70 +752,109 @@ export default function AdminIntelligencePage() {
 
           {fcData && (
             <div className="space-y-6">
-              {/* Primary Point & Interval Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">Projected Rating</span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-3xl font-bold text-blue-600">
-                        {fcData.prediction ? `${fcData.prediction.toFixed(2)} ★` : "—"}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">{fcData.entity} ({fcData.meal_type})</span>
+              {/* SECTION: WHAT IS THE MODEL PREDICTING? */}
+              <Card className="border-l-4 border-l-emerald-600">
+                <CardHeader className="pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Horizon Prediction</span>
+                      <CardTitle className="text-lg">WHAT IS THE MODEL PREDICTING?</CardTitle>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2">
-                      Forecast Date: {fcData.forecast_date || "Next Serving"}
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">90% Prediction Interval</span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="text-2xl font-bold text-slate-800">
-                        {fcData.prediction_interval_lower?.toFixed(2)} — {fcData.prediction_interval_upper?.toFixed(2)} ★
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Uncertainty span: ±{(((fcData.prediction_interval_upper || 0) - (fcData.prediction_interval_lower || 0)) / 2).toFixed(2)} ★
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-slate-50 border-slate-200">
-                  <CardContent className="p-4">
-                    <span className="text-xs font-medium text-slate-500">Validation & Accuracy</span>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge variant="success" size="md">
-                        27.3% MAE Error Reduction
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="neutral" size="sm">
+                        Target: <strong className="text-slate-800 ml-1">{fcData.entity || fcFood}</strong>
+                      </Badge>
+                      <Badge variant="neutral" size="sm">
+                        Meal: <strong className="text-slate-800 ml-1">{fcData.meal_type || fcMealType}</strong>
+                      </Badge>
+                      <Badge variant="default" size="sm">
+                        Horizon: <strong className="text-blue-700 ml-1">{fcHorizon} Days Ahead</strong>
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Model: {fcData.model_version} (vs {fcData.baseline_model})
-                    </p>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="bg-slate-50 border-slate-200">
+                      <CardContent className="p-4">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">Projected Rating</span>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-3xl font-bold text-blue-600">
+                            {fcData.prediction ? `${fcData.prediction.toFixed(2)} ★` : "—"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Central scenario estimate under historical patterns
+                        </p>
+                      </CardContent>
+                    </Card>
 
-              {/* Top Feature Drivers */}
+                    <Card className="bg-slate-50 border-slate-200">
+                      <CardContent className="p-4">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">90% Prediction Interval</span>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className="text-2xl font-bold text-slate-800">
+                            {fcData.prediction_interval_lower?.toFixed(2)} — {fcData.prediction_interval_upper?.toFixed(2)} ★
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Uncertainty span: ±{(((fcData.prediction_interval_upper || 0) - (fcData.prediction_interval_lower || 0)) / 2).toFixed(2)} ★
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-50 border-slate-200">
+                      <CardContent className="p-4">
+                        <span className="text-xs font-semibold text-slate-500 uppercase">Validation & Model Accuracy</span>
+                        <div className="mt-1 flex items-center gap-2">
+                          <Badge variant="success" size="md">
+                            27.3% MAE Error Reduction
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Model: {fcData.model_version} (vs {fcData.baseline_model})
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950">
+                    <p className="font-semibold">Prediction Interpretation:</p>
+                    <p className="mt-0.5 leading-relaxed text-emerald-900">
+                      The model estimates the future rating under historical patterns. The prediction interval represents uncertainty around that estimate.
+                      Prediction intervals reflect modelled data variance; they are not deterministic confidence bounds or guarantees.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* SECTION: MODEL FEATURE DRIVERS */}
               {fcData.top_features && fcData.top_features.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Top Contributing Feature Drivers</CardTitle>
-                    <p className="text-xs text-slate-500">Empirical weights learned by Gradient Boosting model</p>
+                    <CardTitle>MODEL FEATURE DRIVERS</CardTitle>
+                    <p className="text-xs text-slate-500">
+                      These are model features associated with the forecast; they should not be interpreted as causal effects.
+                    </p>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       {fcData.top_features.map((feat, idx) => (
-                        <div key={idx} className="space-y-1">
-                          <div className="flex justify-between text-xs font-medium text-slate-700">
-                            <span className="font-mono">{feat.feature}</span>
-                            <span>{(feat.importance * 100).toFixed(1)}%</span>
+                        <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
+                          <div className="flex flex-wrap items-center justify-between text-xs gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-800">
+                                {getHumanReadableFeature(feat.feature)}
+                              </span>
+                              <code className="text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                {feat.feature}
+                              </code>
+                            </div>
+                            <span className="font-bold text-blue-700">{(feat.importance * 100).toFixed(1)}%</span>
                           </div>
-                          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                             <div
-                              className="bg-blue-600 h-full rounded-full"
+                              className="bg-blue-600 h-full rounded-full transition-all"
                               style={{ width: `${Math.min(100, Math.max(5, feat.importance * 100))}%` }}
                             ></div>
                           </div>
@@ -677,14 +865,16 @@ export default function AdminIntelligencePage() {
                 </Card>
               )}
 
-              {/* Horizon Data Points Table */}
+              {/* 7-DAY FORECAST TRAJECTORY */}
               <Card>
                 <CardHeader>
-                  <CardTitle>{fcHorizon}-Day Horizon Trajectory</CardTitle>
-                  <p className="text-xs text-slate-500">Point predictions alongside strictly verified 90% prediction intervals</p>
+                  <CardTitle>{fcHorizon}-Day Forecast Trajectory</CardTitle>
+                  <p className="text-xs text-slate-500">
+                    Each day is a separate forecast point generated from the available historical information. Point predictions alongside 90% prediction intervals.
+                  </p>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
                     <table className="w-full text-left text-xs sm:text-sm">
                       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
                         <tr>
@@ -720,7 +910,7 @@ export default function AdminIntelligencePage() {
                 </CardContent>
               </Card>
 
-              {/* Assumptions Box */}
+              {/* Model Assumptions Box */}
               {fcData.assumptions && fcData.assumptions.length > 0 && (
                 <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 text-xs text-blue-900 space-y-1">
                   <p className="font-semibold">Model Assumptions & Calibration:</p>
@@ -748,6 +938,43 @@ export default function AdminIntelligencePage() {
       {/* ========================================================================= */}
       {activeTab === "simulation" && (
         <div className="space-y-6">
+          {/* Top WHAT IF Banner & Visual Conceptual Flow */}
+          <div className="rounded-xl border border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-blue-50/60 to-purple-50/50 p-5 space-y-4">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">WHAT IF?</span>
+              <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                Simulate Menu Adjustments in Virtual Space
+              </h3>
+              <p className="text-xs text-slate-600 mt-1">
+                Test a hypothetical menu change without changing operational data.
+              </p>
+            </div>
+
+            {/* Visual Step-by-Step Flow */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center text-xs">
+              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] font-bold text-slate-400 uppercase block">Step 1</span>
+                <span className="font-bold text-slate-800">CURRENT STATE</span>
+                <p className="text-[11px] text-slate-500 mt-0.5">Historical baseline data</p>
+              </div>
+              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase block">Step 2</span>
+                <span className="font-bold text-indigo-700">SIMULATED CHANGE</span>
+                <p className="text-[11px] text-slate-500 mt-0.5">Hypothetical menu shift</p>
+              </div>
+              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] font-bold text-blue-500 uppercase block">Step 3</span>
+                <span className="font-bold text-blue-700">MONTE CARLO EXP</span>
+                <p className="text-[11px] text-slate-500 mt-0.5">Repeated stochastic runs</p>
+              </div>
+              <div className="p-3 bg-white/90 rounded-lg border border-indigo-100 shadow-2xs">
+                <span className="text-[10px] font-bold text-emerald-500 uppercase block">Step 4</span>
+                <span className="font-bold text-emerald-700">POSSIBLE OUTCOMES</span>
+                <p className="text-[11px] text-slate-500 mt-0.5">P10 - P90 distribution</p>
+              </div>
+            </div>
+          </div>
+
           {/* Safe Mode Guardrail Banner */}
           <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-3 text-xs sm:text-sm text-amber-900">
             <span className="text-xl">🛡️</span>
@@ -918,7 +1145,7 @@ export default function AdminIntelligencePage() {
                 </div>
               )}
 
-              {/* Comparative Side-by-Side Projection Card */}
+              {/* BASELINE VS SCENARIO */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-slate-50 border-slate-200">
                   <CardContent className="p-4">
@@ -926,8 +1153,11 @@ export default function AdminIntelligencePage() {
                     <div className="mt-1">
                       <span className="text-2xl font-bold text-slate-900">{simData.baseline.prediction.toFixed(2)} ★</span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
+                    <p className="text-xs text-slate-500 mt-1 font-mono">
                       90% Interval: [{simData.baseline.lower_bound.toFixed(2)} — {simData.baseline.upper_bound.toFixed(2)}]
+                    </p>
+                    <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-200">
+                      Expected outcome under the current menu/data conditions.
                     </p>
                   </CardContent>
                 </Card>
@@ -935,11 +1165,15 @@ export default function AdminIntelligencePage() {
                 <Card className="bg-blue-50/50 border-blue-200">
                   <CardContent className="p-4">
                     <span className="text-xs font-semibold text-blue-700 uppercase">Projected Scenario</span>
-                    <div className="mt-1">
+                    <div className="mt-1 flex items-baseline gap-2">
                       <span className="text-2xl font-bold text-blue-900">{simData.scenario.prediction.toFixed(2)} ★</span>
+                      <span className="text-xs font-semibold text-blue-700">(Central scenario estimate)</span>
                     </div>
-                    <p className="text-xs text-blue-700 mt-2">
+                    <p className="text-xs text-blue-700 mt-1 font-mono">
                       90% Interval: [{simData.scenario.lower_bound.toFixed(2)} — {simData.scenario.upper_bound.toFixed(2)}]
+                    </p>
+                    <p className="text-xs text-blue-900 mt-2 pt-2 border-t border-blue-200">
+                      Expected outcome under the hypothetical change. (Note: Central scenario estimate is distinct from the Monte Carlo P50 median below).
                     </p>
                   </CardContent>
                 </Card>
@@ -956,53 +1190,94 @@ export default function AdminIntelligencePage() {
                         {simData.delta.direction}
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
-                      Improvement Prob: {(simData.distribution.probability_of_improvement * 100).toFixed(0)}%
+                    <p className="text-xs text-slate-500 mt-1">
+                      Estimated difference between scenario and baseline.
+                    </p>
+                    <p className="text-xs text-slate-600 mt-2 pt-2 border-t border-slate-200">
+                      Represents model expectation under virtual conditions; not a guaranteed real-world improvement or decline.
                     </p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Monte Carlo Distribution & Percentiles */}
+              {/* Monte Carlo Uncertainty Distribution & Percentiles */}
               <Card>
                 <CardHeader>
                   <CardTitle>Monte Carlo Uncertainty Distribution ({simData.distribution.runs.toLocaleString()} Iterations)</CardTitle>
-                  <p className="text-xs text-slate-500">Empirical percentile distribution across paired common-shock stochastic runs</p>
+                  <p className="text-xs text-slate-600">
+                    Monte Carlo simulation runs the same hypothetical scenario repeatedly under different random uncertainty conditions.
+                  </p>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 text-center mb-6">
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P10 (Pessimistic)</p>
+                      <p className="text-[11px] font-semibold text-slate-500">P10</p>
                       <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p10.toFixed(2)} ★</p>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">Lower-end simulated outcome</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                       <p className="text-[11px] font-semibold text-slate-500">P25</p>
                       <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p25?.toFixed(2) || "—"} ★</p>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">Lower quartile</span>
                     </div>
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-[11px] font-semibold text-blue-600">P50 (Median)</p>
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 col-span-2 sm:col-span-1">
+                      <p className="text-[11px] font-semibold text-blue-700">P50 (Median)</p>
                       <p className="text-lg font-bold text-blue-900 mt-1">{simData.distribution.p50.toFixed(2)} ★</p>
+                      <span className="text-[10px] text-blue-700 font-medium block mt-0.5">Median of Monte Carlo simulated outcomes</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                       <p className="text-[11px] font-semibold text-slate-500">P75</p>
                       <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p75?.toFixed(2) || "—"} ★</p>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">Upper quartile</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <p className="text-[11px] font-semibold text-slate-500">P90 (Optimistic)</p>
+                      <p className="text-[11px] font-semibold text-slate-500">P90</p>
                       <p className="text-lg font-bold text-slate-800 mt-1">{simData.distribution.p90.toFixed(2)} ★</p>
+                      <span className="text-[10px] text-slate-500 block mt-0.5">Higher-end simulated outcome</span>
                     </div>
                   </div>
 
-                  {/* Paired Delta Percentile Spreads */}
+                  {/* Simulated Probability Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-emerald-900">Simulated Improvement Frequency:</span>
+                        <span className="text-base font-bold text-emerald-700">
+                          {(simData.distribution.probability_of_improvement * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <p className="text-emerald-800 mt-1">
+                        Percentage of simulated runs where the scenario outcome exceeded the baseline.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-lg bg-rose-50/70 border border-rose-200 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-rose-900">Simulated Rating Drop Frequency:</span>
+                        <span className="text-base font-bold text-rose-700">
+                          {(simData.distribution.probability_of_rating_drop * 100).toFixed(0)}%
+                        </span>
+                      </div>
+                      <p className="text-rose-800 mt-1">
+                        Percentage of simulated runs where the scenario outcome was below the baseline.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Paired Delta Empirical Spread */}
                   {simData.delta.p10_delta !== undefined && (
-                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-4">
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 flex flex-wrap items-center justify-between gap-4">
                       <span className="font-semibold">Paired Delta Empirical Spread:</span>
                       <span>P10: <strong className={simData.delta.p10_delta < 0 ? "text-rose-600" : "text-emerald-600"}>{simData.delta.p10_delta > 0 ? "+" : ""}{simData.delta.p10_delta.toFixed(2)}</strong></span>
                       <span>P50: <strong className={(simData.delta.p50_delta ?? 0) < 0 ? "text-rose-600" : "text-emerald-600"}>{(simData.delta.p50_delta ?? 0) > 0 ? "+" : ""}{(simData.delta.p50_delta ?? 0).toFixed(2)}</strong></span>
                       <span>P90: <strong className={(simData.delta.p90_delta ?? 0) < 0 ? "text-rose-600" : "text-emerald-600"}>{(simData.delta.p90_delta ?? 0) > 0 ? "+" : ""}{(simData.delta.p90_delta ?? 0).toFixed(2)}</strong></span>
-                      <span>Risk of Rating Drop: <strong className="text-rose-600">{(simData.distribution.probability_of_rating_drop * 100).toFixed(0)}%</strong></span>
+                      <span className="text-[11px] text-slate-400 italic">Common-shock Monte Carlo distribution</span>
                     </div>
                   )}
+
+                  <div className="p-3 rounded-lg bg-slate-100 text-[11px] text-slate-600">
+                    <strong>Boundary Notice:</strong> Simulated frequencies represent Monte Carlo iterations under modelled uncertainty; they are not real-world probability guarantees.
+                  </div>
                 </CardContent>
               </Card>
 
