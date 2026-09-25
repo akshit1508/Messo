@@ -23,21 +23,21 @@ import {
 } from "@/types/ai";
 
 const FEATURE_LABEL_MAP: Record<string, string> = {
-  food_frequency_14d: "How frequently this dish was served in the last 14 days",
+  food_frequency_14d: "How often this dish was served recently",
   days_since_last_served: "Days since this dish was last served",
-  food_last_served_mean: "Average rating when this dish was recently served",
-  food_30d_std: "Rating variability over the last 30 days",
+  food_last_served_mean: "Recent rating pattern",
+  food_30d_std: "Rating variation over the last 30 days",
   food_all_time_mean: "Historical average rating",
   food_7d_mean: "Average rating over the last 7 days",
   food_30d_mean: "Average rating over the last 30 days",
-  food_frequency_7d: "Serving count in the last 7 days",
-  total_complaints_7d: "Total complaints received in the last 7 days",
-  oil_complaints_7d: "Oiliness complaints in the last 7 days",
+  food_frequency_7d: "Serving frequency in the last 7 days",
+  total_complaints_7d: "Complaints received in the last 7 days",
+  oil_complaints_7d: "Oiliness feedback in the last 7 days",
   poll_vote_share_recent: "Recent poll preference vote share",
   day_of_week: "Day of week pattern",
   is_weekend: "Weekend vs weekday pattern",
   month: "Seasonal month indicator",
-  meal_type_code: "Meal type indicator (Breakfast, Lunch, Dinner)",
+  meal_type_code: "Meal type pattern (Breakfast, Lunch, Dinner)",
 };
 
 function getHumanReadableFeature(rawFeature: string): string {
@@ -47,6 +47,27 @@ function getHumanReadableFeature(rawFeature: string): string {
   return rawFeature
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatForecastDate(dateStr: string): string {
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return `${months[monthIndex]} ${day}`;
+      }
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr;
 }
 
 const FACTOR_TITLE_MAP: Record<string, string> = {
@@ -206,8 +227,8 @@ export default function AdminIntelligencePage() {
         horizon_days: fcHorizon,
       });
       setFcData(res);
-    } catch (err: any) {
-      setFcError(err.message || "Failed to generate horizon forecast");
+    } catch {
+      setFcError("Couldn't generate the forecast. Please try again.");
     } finally {
       setFcLoading(false);
     }
@@ -298,8 +319,8 @@ export default function AdminIntelligencePage() {
         </nav>
       </div>
 
-      {/* Top Banner and KPI Cards only shown for Forecast and Simulation */}
-      {activeTab !== "root_cause" && (
+      {/* Top Banner and KPI Cards only shown for Simulation */}
+      {activeTab === "simulation" && (
         <>
           {/* Portfolio / Demo Friendly Overview Banner */}
           <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-5 shadow-2xs">
@@ -836,254 +857,358 @@ export default function AdminIntelligencePage() {
       {/* ========================================================================= */}
       {activeTab === "forecast" && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Probabilistic Horizon Forecasting</CardTitle>
-              <p className="text-xs text-slate-500">
-                Trained Gradient Boosting Regressor (60 trees, learning rate 0.08, max depth 3) predicting food ratings with 90% Prediction Intervals.
-                Achieves 27.3% MAE error reduction over baseline EWMA.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleRunForecast} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Target Dish</label>
-                  <select
-                    value={fcFood}
-                    onChange={(e) => setFcFood(e.target.value)}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {foods.map((food) => {
-                      const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
-                      return (
-                        <option key={foodName} value={foodName}>
-                          {foodName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+          {/* Header */}
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              What Next?
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              What might the next few days look like?
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Use recent and historical patterns to estimate future food ratings.
+            </p>
+          </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Meal Type</label>
-                  <select
-                    value={fcMealType}
-                    onChange={(e) => setFcMealType(e.target.value)}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Dinner">Dinner</option>
-                    <option value="Lunch">Lunch</option>
-                    <option value="Breakfast">Breakfast</option>
-                  </select>
-                </div>
+          {/* Forecast Controls */}
+          <Card className="border border-slate-200">
+            <CardContent className="p-5">
+              <form onSubmit={handleRunForecast} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Food</label>
+                    <select
+                      value={fcFood}
+                      onChange={(e) => setFcFood(e.target.value)}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {foods.map((food) => {
+                        const foodName = typeof food === "string" ? food : (food as any)?.name ?? String(food);
+                        return (
+                          <option key={foodName} value={foodName}>
+                            {foodName}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Prediction Horizon</label>
-                  <select
-                    value={fcHorizon}
-                    onChange={(e) => setFcHorizon(Number(e.target.value))}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={7}>7 Days Ahead</option>
-                    <option value={14}>14 Days Ahead</option>
-                  </select>
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Meal</label>
+                    <select
+                      value={fcMealType}
+                      onChange={(e) => setFcMealType(e.target.value)}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="Dinner">Dinner</option>
+                      <option value="Lunch">Lunch</option>
+                      <option value="Breakfast">Breakfast</option>
+                    </select>
+                  </div>
 
-                <div>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    isLoading={fcLoading}
-                    className="w-full"
-                  >
-                    Generate Forecast
-                  </Button>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Look ahead</label>
+                    <select
+                      value={fcHorizon}
+                      onChange={(e) => setFcHorizon(Number(e.target.value))}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={7}>7 days</option>
+                      <option value={14}>14 days</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      isLoading={fcLoading}
+                      className="w-full h-[42px]"
+                    >
+                      Generate Forecast
+                    </Button>
+                  </div>
                 </div>
+                <p className="text-xs text-slate-500">
+                  Choose a dish and meal to estimate upcoming ratings.
+                </p>
               </form>
             </CardContent>
           </Card>
 
-          {fcError && <ErrorState title="Forecast Error" message={fcError} onRetry={handleRunForecast} />}
+          {/* Error display */}
+          {fcError && (
+            <ErrorState
+              title="Couldn't generate the forecast."
+              message="Please try again."
+              onRetry={handleRunForecast}
+            />
+          )}
 
+          {/* Forecast Results */}
           {fcData && (
             <div className="space-y-6">
-              {/* SECTION: WHAT IS THE MODEL PREDICTING? */}
-              <Card className="border-l-4 border-l-emerald-600">
-                <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Horizon Prediction</span>
-                      <CardTitle className="text-lg">WHAT IS THE MODEL PREDICTING?</CardTitle>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="neutral" size="sm">
-                        Target: <strong className="text-slate-800 ml-1">{fcData.entity || fcFood}</strong>
-                      </Badge>
-                      <Badge variant="neutral" size="sm">
-                        Meal: <strong className="text-slate-800 ml-1">{fcData.meal_type || fcMealType}</strong>
-                      </Badge>
-                      <Badge variant="default" size="sm">
-                        Horizon: <strong className="text-blue-700 ml-1">{fcHorizon} Days Ahead</strong>
-                      </Badge>
-                    </div>
-                  </div>
+              {/* Data Sufficiency Notice (Only when INSUFFICIENT) */}
+              {fcData.data_status === "INSUFFICIENT" && (
+                <div className="p-3.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-0.5">
+                  <span className="font-semibold block">Limited historical data</span>
+                  <p className="text-amber-800">
+                    The forecast is based on a smaller amount of historical information, so uncertainty may be higher.
+                  </p>
+                </div>
+              )}
+
+              {/* PRIMARY RESULT: EXPECTED RATING */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    EXPECTED RATING
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {fcData.entity || fcFood} · {fcData.meal_type || fcMealType} · {fcHorizon}-day forecast
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="bg-slate-50 border-slate-200">
-                      <CardContent className="p-4">
-                        <span className="text-xs font-semibold text-slate-500 uppercase">Projected Rating</span>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-3xl font-bold text-blue-600">
-                            {fcData.prediction ? `${fcData.prediction.toFixed(2)} ★` : "—"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          Central scenario estimate under historical patterns
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-slate-50 border-slate-200">
-                      <CardContent className="p-4">
-                        <span className="text-xs font-semibold text-slate-500 uppercase">90% Prediction Interval</span>
-                        <div className="flex items-baseline gap-2 mt-1">
-                          <span className="text-2xl font-bold text-slate-800">
-                            {fcData.prediction_interval_lower?.toFixed(2)} — {fcData.prediction_interval_upper?.toFixed(2)} ★
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          Uncertainty span: ±{(((fcData.prediction_interval_upper || 0) - (fcData.prediction_interval_lower || 0)) / 2).toFixed(2)} ★
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="bg-slate-50 border-slate-200">
-                      <CardContent className="p-4">
-                        <span className="text-xs font-semibold text-slate-500 uppercase">Validation & Model Accuracy</span>
-                        <div className="mt-1 flex items-center gap-2">
-                          <Badge variant="success" size="md">
-                            27.3% MAE Error Reduction
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-2">
-                          Model: {fcData.model_version} (vs {fcData.baseline_model})
-                        </p>
-                      </CardContent>
-                    </Card>
+                <CardContent className="pt-5 space-y-3">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-extrabold text-slate-900">
+                      {fcData.prediction ? `${fcData.prediction.toFixed(2)} ★` : "—"}
+                    </span>
                   </div>
-
-                  <div className="p-3.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950">
-                    <p className="font-semibold">Prediction Interpretation:</p>
-                    <p className="mt-0.5 leading-relaxed text-emerald-900">
-                      The model estimates the future rating under historical patterns. The prediction interval represents uncertainty around that estimate.
-                      Prediction intervals reflect modelled data variance; they are not deterministic confidence bounds or guarantees.
-                    </p>
-                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Based on historical patterns, the model expects the rating to be around{" "}
+                    <strong className="text-slate-800 font-semibold">{fcData.prediction ? fcData.prediction.toFixed(2) : "—"}</strong>. Actual ratings may vary.
+                  </p>
                 </CardContent>
               </Card>
 
-              {/* SECTION: MODEL FEATURE DRIVERS */}
-              {fcData.top_features && fcData.top_features.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>MODEL FEATURE DRIVERS</CardTitle>
-                    <p className="text-xs text-slate-500">
-                      These are model features associated with the forecast; they should not be interpreted as causal effects.
+              {/* UNCERTAINTY / LIKELY RANGE */}
+              {fcData.prediction_interval_lower != null && fcData.prediction_interval_upper != null && fcData.prediction != null && (
+                <Card className="border border-slate-200">
+                  <CardHeader className="pb-3 border-b border-slate-100">
+                    <CardTitle className="text-base font-bold text-slate-900">
+                      LIKELY RANGE
+                    </CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Estimated interval reflecting forecast uncertainty.
                     </p>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {fcData.top_features.map((feat, idx) => (
-                        <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
-                          <div className="flex flex-wrap items-center justify-between text-xs gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-800">
-                                {getHumanReadableFeature(feat.feature)}
-                              </span>
-                              <code className="text-[10px] text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                                {feat.feature}
-                              </code>
-                            </div>
-                            <span className="font-bold text-blue-700">{(feat.importance * 100).toFixed(1)}%</span>
-                          </div>
-                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-blue-600 h-full rounded-full transition-all"
-                              style={{ width: `${Math.min(100, Math.max(5, feat.importance * 100))}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
+                  <CardContent className="pt-5 space-y-4">
+                    <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-mono font-semibold text-slate-700">
+                        <span>{fcData.prediction_interval_lower.toFixed(2)}</span>
+                        <span className="font-bold text-slate-900 text-sm">
+                          {fcData.prediction.toFixed(2)} ★
+                        </span>
+                        <span>{fcData.prediction_interval_upper.toFixed(2)}</span>
+                      </div>
+                      <div className="relative w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div className="bg-blue-600 h-full w-full rounded-full" />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-500">
+                        <span>Lower bound</span>
+                        <span className="font-medium text-slate-700">Expected</span>
+                        <span>Upper bound</span>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-600 space-y-1">
+                      <p>
+                        <strong className="text-slate-800">90% prediction interval:</strong>{" "}
+                        {fcData.prediction_interval_lower.toFixed(2)} – {fcData.prediction_interval_upper.toFixed(2)}
+                      </p>
+                      <p className="text-slate-500">
+                        This range reflects uncertainty in the forecast; it is not a guarantee of the future rating.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               )}
 
-              {/* 7-DAY FORECAST TRAJECTORY */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>{fcHorizon}-Day Forecast Trajectory</CardTitle>
-                  <p className="text-xs text-slate-500">
-                    Each day is a separate forecast point generated from the available historical information. Point predictions alongside 90% prediction intervals.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                    <table className="w-full text-left text-xs sm:text-sm">
-                      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200">
-                        <tr>
-                          <th className="py-2.5 px-3 font-semibold">Forecast Date</th>
-                          <th className="py-2.5 px-3 font-semibold">Dish</th>
-                          <th className="py-2.5 px-3 font-semibold">Projected Rating</th>
-                          <th className="py-2.5 px-3 font-semibold">90% Prediction Interval</th>
-                          <th className="py-2.5 px-3 font-semibold">Confidence Tier</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {fcData.data_points.map((pt, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/70">
-                            <td className="py-2.5 px-3 font-mono font-medium text-slate-900">{pt.forecast_date}</td>
-                            <td className="py-2.5 px-3 text-slate-700">{pt.target_entity || fcData.entity}</td>
-                            <td className="py-2.5 px-3 font-bold text-blue-600">{pt.predicted_value.toFixed(2)} ★</td>
-                            <td className="py-2.5 px-3 text-slate-600">
-                              [{pt.prediction_interval_lower.toFixed(2)} — {pt.prediction_interval_upper.toFixed(2)}]
-                            </td>
-                            <td className="py-2.5 px-3">
-                              <Badge
-                                variant={pt.confidence === "HIGH" ? "success" : pt.confidence === "MEDIUM" ? "warning" : "neutral"}
-                                size="sm"
-                              >
-                                {pt.confidence}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* NEXT 7 DAYS / FORECAST TRAJECTORY */}
+              {fcData.data_points && fcData.data_points.length > 0 && (
+                <Card className="border border-slate-200">
+                  <CardHeader className="pb-3 border-b border-slate-100">
+                    <CardTitle className="text-base font-bold text-slate-900">
+                      NEXT {fcHorizon} DAYS
+                    </CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Daily rating trajectory with prediction intervals.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="pt-5 space-y-4">
+                    {/* Clean visual trend cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pb-1">
+                      {fcData.data_points.map((pt, idx) => {
+                        const minRating = 1.0;
+                        const maxRating = 5.0;
+                        const fillPercent = Math.max(10, Math.min(100, ((pt.predicted_value - minRating) / (maxRating - minRating)) * 100));
+                        const labelDate = formatForecastDate(pt.forecast_date);
 
-              {/* Model Assumptions Box */}
-              {fcData.assumptions && fcData.assumptions.length > 0 && (
-                <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 text-xs text-blue-900 space-y-1">
-                  <p className="font-semibold">Model Assumptions & Calibration:</p>
-                  <ul className="list-disc list-inside space-y-0.5 text-blue-800">
-                    {fcData.assumptions.map((asm, idx) => (
-                      <li key={idx}>{asm}</li>
-                    ))}
-                  </ul>
-                </div>
+                        return (
+                          <div
+                            key={idx}
+                            className="p-3 rounded-lg border border-slate-200 bg-slate-50 text-center space-y-1 flex flex-col justify-between"
+                          >
+                            <span className="text-[11px] font-semibold text-slate-600 block">
+                              {labelDate}
+                            </span>
+                            <div className="py-0.5">
+                              <span className="text-base font-bold text-slate-900 block font-mono">
+                                {pt.predicted_value.toFixed(2)} ★
+                              </span>
+                              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+                                <div
+                                  className="bg-blue-600 h-full rounded-full"
+                                  style={{ width: `${fillPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className="text-[10px] text-slate-500 font-mono block">
+                              {pt.prediction_interval_lower.toFixed(2)}–{pt.prediction_interval_upper.toFixed(2)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Compact Table */}
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                          <tr>
+                            <th className="py-2.5 px-3">Date</th>
+                            <th className="py-2.5 px-3">Expected Rating</th>
+                            <th className="py-2.5 px-3">Prediction Interval</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                          {fcData.data_points.map((pt, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/70">
+                              <td className="py-2.5 px-3 font-medium text-slate-800">
+                                {formatForecastDate(pt.forecast_date)}
+                                <span className="text-[10px] text-slate-400 font-mono ml-1.5">
+                                  ({pt.forecast_date})
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 font-bold text-slate-900 font-mono">
+                                {pt.predicted_value.toFixed(2)} ★
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600 font-mono">
+                                {pt.prediction_interval_lower.toFixed(2)} – {pt.prediction_interval_upper.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
+
+              {/* WHAT IS INFLUENCING THIS ESTIMATE? */}
+              {fcData.top_features && fcData.top_features.length > 0 && (
+                <Card className="border border-slate-200">
+                  <CardHeader className="pb-3 border-b border-slate-100">
+                    <CardTitle className="text-base font-bold text-slate-900">
+                      WHAT IS INFLUENCING THIS ESTIMATE?
+                    </CardTitle>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Model inputs with the highest weighting in the forecast calculation.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-4">
+                    <div className="space-y-3">
+                      {fcData.top_features.map((feat, idx) => (
+                        <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-slate-800">
+                              {getHumanReadableFeature(feat.feature)}
+                            </span>
+                            <span className="font-bold text-slate-900 font-mono">
+                              {Math.round(feat.importance * 100)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(100, Math.max(5, feat.importance * 100))}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-slate-500 pt-1">
+                      These are model inputs associated with the forecast, not proven causes.
+                    </p>
+
+                    {/* Expandable Technical Model Details */}
+                    <details className="pt-2 border-t border-slate-200 text-xs text-slate-600 group">
+                      <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 flex items-center gap-1.5 select-none py-1">
+                        <span className="transition-transform group-open:rotate-90">▸</span>
+                        <span>View technical model details</span>
+                      </summary>
+                      <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200 space-y-2">
+                        <p className="text-[11px] text-slate-500">
+                          Internal feature representation and underlying parameter names:
+                        </p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-[11px]">
+                            <thead className="text-slate-500 border-b border-slate-200">
+                              <tr>
+                                <th className="py-1.5 px-2">Technical Feature</th>
+                                <th className="py-1.5 px-2">Human Label</th>
+                                <th className="py-1.5 px-2">Weight</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-mono">
+                              {fcData.top_features.map((feat, idx) => (
+                                <tr key={idx}>
+                                  <td className="py-1.5 px-2 text-slate-700 font-semibold">{feat.feature}</td>
+                                  <td className="py-1.5 px-2 font-sans text-slate-600">{getHumanReadableFeature(feat.feature)}</td>
+                                  <td className="py-1.5 px-2 text-slate-800">{(feat.importance * 100).toFixed(1)}%</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-100 flex flex-wrap gap-4">
+                          <span>Model: <strong className="text-slate-700">{fcData.model_version}</strong></span>
+                          <span>Baseline: <strong className="text-slate-700">{fcData.baseline_model}</strong></span>
+                          <span>Generated: <strong className="text-slate-700">{fcData.generated_at}</strong></span>
+                        </div>
+                      </div>
+                    </details>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* ABOUT THIS FORECAST */}
+              <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                <span className="font-bold uppercase tracking-wider text-slate-700 block">
+                  ABOUT THIS FORECAST
+                </span>
+                <p className="text-slate-600 leading-relaxed">
+                  This model was evaluated against a historical baseline. During validation, its average prediction error was lower than the baseline.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  <span className="font-semibold text-slate-800 bg-white px-2.5 py-1 rounded border border-slate-200">
+                    27.3% lower MAE than baseline
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 pt-1">
+                  Forecasts are estimates based on historical patterns and include uncertainty. Validation accuracy does not guarantee future performance.
+                </p>
+              </div>
             </div>
           )}
 
+          {/* Empty State */}
           {!fcData && !fcLoading && !fcError && (
             <EmptyState
-              title="No Forecast Generated"
-              description="Select a dish from the menu catalog and click 'Generate Forecast' to simulate expected satisfaction trends."
+              title="What Next?"
+              description="Select a dish and meal to see the expected rating for the coming days."
             />
           )}
         </div>
