@@ -49,6 +49,38 @@ function getHumanReadableFeature(rawFeature: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+const FACTOR_TITLE_MAP: Record<string, string> = {
+  HIGH_OIL_PREPARATION: "Oil / Greasiness",
+  MENU_REPETITION_FATIGUE: "Menu Repetition Fatigue",
+  DINNER_SERVICE_CONCENTRATION: "Dinner Service Concentration",
+  TEMPORARY_OPERATIONAL_ANOMALY: "Temporary Operational Anomaly",
+};
+
+function getHumanReadableFactor(factorId: string): string {
+  if (FACTOR_TITLE_MAP[factorId]) return FACTOR_TITLE_MAP[factorId];
+  return factorId.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const SIGNAL_TITLE_MAP: Record<string, string> = {
+  oil_complaint_spike: "Oil / Greasiness Mentions",
+  food_rating_drop_dal: "Dal Tadka Feedback",
+  meal_rating_drop_dinner: "Dinner Service Rating",
+  high_food_frequency: "Dish Repetition Frequency",
+  poll_preference_vote_share: "Poll Preference Vote Share",
+  post_incident_rating_recovery: "Post-Incident Recovery Rating",
+};
+
+function getHumanReadableSignal(signal: string, targetEntity?: string): string {
+  if (targetEntity && signal === "food_rating_drop_dal") {
+    return `${targetEntity} Feedback`;
+  }
+  if (targetEntity && signal === "high_food_frequency") {
+    return `${targetEntity} Frequency`;
+  }
+  if (SIGNAL_TITLE_MAP[signal]) return SIGNAL_TITLE_MAP[signal];
+  return signal.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 export default function AdminIntelligencePage() {
   const [activeTab, setActiveTab] = useState<"root_cause" | "forecast" | "simulation">("root_cause");
   const [foods, setFoods] = useState<string[]>([]);
@@ -57,10 +89,10 @@ export default function AdminIntelligencePage() {
   // ==========================================
   // 1. ROOT CAUSE ENGINE STATE (WHY?)
   // ==========================================
-  const [rcStartDate, setRcStartDate] = useState("2026-03-01");
-  const [rcEndDate, setRcEndDate] = useState("2026-03-07");
+  const [rcStartDate, setRcStartDate] = useState("2026-05-22");
+  const [rcEndDate, setRcEndDate] = useState("2026-06-21");
   const [rcMetric, setRcMetric] = useState("food_satisfaction");
-  const [rcMealType, setRcMealType] = useState<string>("Dinner");
+  const [rcMealType, setRcMealType] = useState<string>("All");
   const [rcLoading, setRcLoading] = useState(false);
   const [rcError, setRcError] = useState<string | null>(null);
   const [rcData, setRcData] = useState<InvestigationResponse | null>(null);
@@ -225,87 +257,6 @@ export default function AdminIntelligencePage() {
       />
 
       {/* Portfolio / Demo Friendly Overview Banner */}
-      <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-5 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">MESO Intelligence</span>
-            <h2 className="text-base font-semibold text-slate-900 mt-0.5">
-              Evidence-Based Feedback Analytics
-            </h2>
-            <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-              Three analytical engines turn historical student feedback into evidence, forecasts, and hypothetical scenarios.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-blue-600 block">WHY?</span>
-              <p className="text-xs text-slate-700 font-medium">Investigate measurable patterns</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-emerald-600 block">WHAT NEXT?</span>
-              <p className="text-xs text-slate-700 font-medium">Forecast future outcomes with uncertainty</p>
-            </div>
-            <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
-              <span className="text-[11px] font-bold text-indigo-600 block">WHAT IF?</span>
-              <p className="text-xs text-slate-700 font-medium">Simulate hypothetical changes without modifying operational data</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Level Operational KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-l-4 border-l-blue-500">
-          <CardContent className="p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Benchmark</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">3.78 ★</span>
-              <span className="text-xs text-slate-500">7-Day Rolling Avg</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">Synthetic student-style reviews</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Forecasted Horizon</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">
-                {fcData?.prediction ? `${fcData.prediction.toFixed(2)} ★` : "3.84 ★"}
-              </span>
-              <span className="text-xs text-emerald-600 font-medium">90% Prediction Interval</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">
-              {fcData?.prediction_interval_lower
-                ? `[${fcData.prediction_interval_lower.toFixed(2)} - ${fcData.prediction_interval_upper?.toFixed(2)}]`
-                : "[3.52 - 4.16] (Gradient Boosting)"}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-indigo-500">
-          <CardContent className="p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Accuracy Benchmark</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-indigo-600">27.3%</span>
-              <span className="text-xs text-slate-500">MAE Error Reduction</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">Compared to EWMA Baseline</p>
-          </CardContent>
-        </Card>
-
-        <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Simulation Safety</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-2xl font-bold text-slate-900">Zero Mutation</span>
-              <span className="text-xs text-amber-600 font-medium">Read-Only</span>
-            </div>
-            <p className="text-xs text-slate-400 mt-2">Logs to ai_simulation table</p>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Engine Navigation Tabs */}
       <div className="border-b border-slate-200">
         <nav className="flex space-x-8" aria-label="Engines">
@@ -347,285 +298,496 @@ export default function AdminIntelligencePage() {
         </nav>
       </div>
 
+      {/* Top Banner and KPI Cards only shown for Forecast and Simulation */}
+      {activeTab !== "root_cause" && (
+        <>
+          {/* Portfolio / Demo Friendly Overview Banner */}
+          <div className="rounded-xl border border-slate-200 bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 p-5 shadow-2xs">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-blue-700">MESO Intelligence</span>
+                <h2 className="text-base font-semibold text-slate-900 mt-0.5">
+                  Evidence-Based Feedback Analytics
+                </h2>
+                <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                  Three analytical engines turn historical student feedback into evidence, forecasts, and hypothetical scenarios.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+                  <span className="text-[11px] font-bold text-blue-600 block">WHY?</span>
+                  <p className="text-xs text-slate-700 font-medium">Investigate measurable patterns</p>
+                </div>
+                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+                  <span className="text-[11px] font-bold text-emerald-600 block">WHAT NEXT?</span>
+                  <p className="text-xs text-slate-700 font-medium">Forecast future outcomes with uncertainty</p>
+                </div>
+                <div className="bg-white/80 backdrop-blur rounded-lg p-3 border border-slate-200/80 shadow-2xs">
+                  <span className="text-[11px] font-bold text-indigo-600 block">WHAT IF?</span>
+                  <p className="text-xs text-slate-700 font-medium">Simulate hypothetical changes without modifying operational data</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Level Operational KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-blue-500">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Benchmark</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-900">3.78 ★</span>
+                  <span className="text-xs text-slate-500">7-Day Rolling Avg</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Synthetic student-style reviews</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-emerald-500">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Forecasted Horizon</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-900">
+                    {fcData?.prediction ? `${fcData.prediction.toFixed(2)} ★` : "3.84 ★"}
+                  </span>
+                  <span className="text-xs text-emerald-600 font-medium">90% Prediction Interval</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">
+                  {fcData?.prediction_interval_lower
+                    ? `[${fcData.prediction_interval_lower.toFixed(2)} - ${fcData.prediction_interval_upper?.toFixed(2)}]`
+                    : "[3.52 - 4.16] (Gradient Boosting)"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-indigo-500">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Model Accuracy Benchmark</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-indigo-600">27.3%</span>
+                  <span className="text-xs text-slate-500">MAE Error Reduction</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Compared to EWMA Baseline</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-amber-500">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Simulation Safety</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-slate-900">Zero Mutation</span>
+                  <span className="text-xs text-amber-600 font-medium">Read-Only</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Logs to ai_simulation table</p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
+
       {/* ========================================================================= */}
       {/* SECTION 1: ROOT CAUSE ENGINE (WHY?) */}
       {/* ========================================================================= */}
       {activeTab === "root_cause" && (
         <div className="space-y-6">
-          {/* 1. ROOT CAUSE ENGINE HEADER */}
-          <div className="rounded-xl border border-blue-200/80 bg-gradient-to-r from-blue-50/90 via-indigo-50/50 to-slate-50 p-6 space-y-4 shadow-2xs">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 bg-blue-100 px-2 py-0.5 rounded">
-                  Root Cause Engine
-                </span>
-                <h2 className="text-xl font-bold text-slate-900 mt-1">
-                  WHY DID THE METRIC CHANGE?
-                </h2>
-                <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                  Investigate measurable changes in student dining feedback using historical evidence, statistical signals, and traceable contributing factors.
-                </p>
-              </div>
-
-              {/* 3-Step Visual: OBSERVE → INVESTIGATE → EXPLAIN */}
-              <div className="flex items-center gap-2 self-start md:self-auto bg-white/95 backdrop-blur border border-slate-200 rounded-lg p-2.5 shadow-2xs">
-                <div className="text-center px-2">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">1</span>
-                  <span className="text-xs font-bold text-blue-700">OBSERVE</span>
-                </div>
-                <span className="text-slate-300 font-bold">→</span>
-                <div className="text-center px-2">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">2</span>
-                  <span className="text-xs font-bold text-indigo-700">INVESTIGATE</span>
-                </div>
-                <span className="text-slate-300 font-bold">→</span>
-                <div className="text-center px-2">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase">3</span>
-                  <span className="text-xs font-bold text-emerald-700">EXPLAIN</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-200/70">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-              <span>Methodology: <strong>AI-assisted statistical investigation</strong> across food ratings, complaint semantic clustering, repetition velocity, and poll sentiment.</span>
-            </div>
+          {/* Header */}
+          <div className="space-y-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Food Satisfaction
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Why did the metric change?
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Investigate shifts in student dining feedback by comparing any selected period against historical baseline data.
+            </p>
           </div>
 
-          {/* 2. INVESTIGATION CONTROLS */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Investigation Parameters</CardTitle>
-              <p className="text-xs text-slate-500">
-                Choose a target metric and comparison window. The engine compares the selected problem window against an automatically determined historical baseline.
-              </p>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleRunInvestigation} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Target Metric</label>
-                  <select
-                    value={rcMetric}
-                    onChange={(e) => setRcMetric(e.target.value)}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="food_satisfaction">Food Satisfaction / Rating</option>
-                    <option value="complaint_volume">Complaint Volume</option>
-                  </select>
-                </div>
+          {/* Investigation Controls */}
+          <Card className="border border-slate-200">
+            <CardContent className="p-5">
+              <form onSubmit={handleRunInvestigation} className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Target Metric
+                    </label>
+                    <select
+                      value={rcMetric}
+                      onChange={(e) => setRcMetric(e.target.value)}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="food_satisfaction">Food Satisfaction</option>
+                      <option value="complaint_volume">Complaint Volume</option>
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
-                    value={rcStartDate}
-                    onChange={(e) => setRcStartDate(e.target.value)}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={rcStartDate}
+                      onChange={(e) => setRcStartDate(e.target.value)}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={rcEndDate}
-                    onChange={(e) => setRcEndDate(e.target.value)}
-                    className="w-full text-sm rounded-lg border border-slate-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={rcEndDate}
+                      onChange={(e) => setRcEndDate(e.target.value)}
+                      className="w-full text-sm rounded-lg border border-slate-300 p-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
 
-                <div>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    size="md"
-                    isLoading={rcLoading}
-                    className="w-full"
-                  >
-                    Run Diagnosis
-                  </Button>
+                  <div>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="md"
+                      isLoading={rcLoading}
+                      className="w-full h-[42px]"
+                    >
+                      Run Analysis
+                    </Button>
+                  </div>
                 </div>
+                <p className="text-xs text-slate-500">
+                  Choose the period you want to investigate.
+                </p>
               </form>
             </CardContent>
           </Card>
 
           {/* Error display */}
-          {rcError && <ErrorState title="Diagnostic Error" message={rcError} onRetry={handleRunInvestigation} />}
+          {rcError && (
+            <ErrorState
+              title="Analysis Error"
+              message={rcError}
+              onRetry={handleRunInvestigation}
+            />
+          )}
 
           {/* Results Area */}
           {rcData && (
             <div className="space-y-6">
-              {/* SECTION 1: WHAT HAPPENED? */}
-              <Card className={`border-l-4 ${rcData.metric_summary.statistically_significant ? "border-l-rose-500" : "border-l-slate-400"}`}>
-                <CardHeader className="pb-2">
+              {/* SECTION: WHAT CHANGED? */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Section 1</span>
-                      <CardTitle className="text-lg">WHAT HAPPENED?</CardTitle>
+                      <CardTitle className="text-base font-bold text-slate-900">
+                        WHAT CHANGED?
+                      </CardTitle>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Observed change between the selected problem window and historical baseline.
+                        Direct comparison between the investigated period and prior baseline.
                       </p>
                     </div>
 
-                    {/* Significance Status Badge */}
                     {rcData.metric_summary.statistically_significant ? (
                       <Badge variant="danger" size="md">
-                        STATISTICALLY SIGNIFICANT DEGRADATION (p = {rcData.metric_summary.p_value ? rcData.metric_summary.p_value.toFixed(4) : "<0.05"})
+                        Significant change detected
                       </Badge>
                     ) : (
                       <Badge variant="neutral" size="md">
-                        NO STATISTICALLY SIGNIFICANT CHANGE
+                        No significant change detected
                       </Badge>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Four Core Metrics Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                    <div>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">TARGET METRIC</span>
-                      <p className="text-base font-bold text-slate-900 capitalize mt-1">
-                        {rcData.target_metric.replace(/_/g, " ")}
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Previous Period
+                      </span>
+                      <p className="text-xl font-bold text-slate-900 mt-1">
+                        {rcData.metric_summary.previous_value.toFixed(2)} ★
                       </p>
-                      <span className="text-[10px] font-mono text-slate-400 truncate block mt-0.5">ID: {rcData.investigation_id}</span>
-                    </div>
-
-                    <div>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">BASELINE</span>
-                      <p className="text-base font-bold text-slate-800 mt-1">
-                        {rcData.metric_summary.previous_value.toFixed(2)}
-                      </p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        {rcData.data_window.comparison_start_date ? `${rcData.data_window.comparison_start_date} to ${rcData.data_window.comparison_end_date}` : "Prior reference period"}
+                      <span className="text-xs text-slate-500 mt-0.5 block">
+                        {rcData.data_window.comparison_start_date
+                          ? `${rcData.data_window.comparison_start_date} to ${rcData.data_window.comparison_end_date}`
+                          : "Prior reference window"}
                       </span>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">PROBLEM WINDOW</span>
-                      <p className="text-base font-bold text-slate-800 mt-1">
-                        {rcData.metric_summary.current_value.toFixed(2)}
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Investigated Period
+                      </span>
+                      <p className="text-xl font-bold text-slate-900 mt-1">
+                        {rcData.metric_summary.current_value.toFixed(2)} ★
                       </p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
+                      <span className="text-xs text-slate-500 mt-0.5 block">
                         {rcData.data_window.target_start_date} to {rcData.data_window.target_end_date}
                       </span>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">CHANGE</span>
-                      <p className={`text-base font-bold mt-1 ${
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Change
+                      </span>
+                      <p className={`text-xl font-bold mt-1 ${
                         rcData.metric_summary.statistically_significant
                           ? (rcData.metric_summary.change < 0 ? "text-rose-600" : "text-emerald-600")
                           : "text-slate-800"
                       }`}>
-                        {rcData.metric_summary.change > 0 ? "+" : ""}{rcData.metric_summary.change.toFixed(2)}{" "}
-                        <span className="text-xs font-medium text-slate-600">
-                          ({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)
+                        {rcData.metric_summary.change < 0 ? "↓" : rcData.metric_summary.change > 0 ? "↑" : ""}{" "}
+                        {Math.abs(rcData.metric_summary.change).toFixed(2)}{" "}
+                        <span className="text-xs font-semibold text-slate-500 ml-1">
+                          ({rcData.metric_summary.percent_change < 0 ? "↓" : rcData.metric_summary.percent_change > 0 ? "↑" : ""}{" "}
+                          {Math.abs(rcData.metric_summary.percent_change).toFixed(1)}%)
                         </span>
                       </p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        {rcData.metric_summary.statistically_significant ? "Confirmed shift" : "Within normal noise"}
+                      <span className="text-xs text-slate-500 mt-0.5 block">
+                        {rcData.metric_summary.statistically_significant ? "Confirmed shift" : "Within normal variation"}
                       </span>
                     </div>
 
-                    <div>
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">SAMPLE SIZE</span>
-                      <p className="text-base font-bold text-slate-800 mt-1">
+                    <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
+                        Review Count
+                      </span>
+                      <p className="text-xl font-bold text-slate-900 mt-1">
                         {rcData.data_window.target_sample_count} reviews
                       </p>
-                      <span className="text-[10px] text-slate-500 block mt-0.5">
-                        vs {rcData.data_window.comparison_sample_count} baseline reviews
+                      <span className="text-xs text-slate-500 mt-0.5 block">
+                        compared to {rcData.data_window.comparison_sample_count} reviews
                       </span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  {/* Significance Explanation Banner */}
-                  {!rcData.metric_summary.statistically_significant ? (
-                    <div className="p-3.5 rounded-lg bg-slate-100 border border-slate-200 text-xs text-slate-700 space-y-1">
-                      <div className="flex items-center gap-2 font-semibold text-slate-800">
-                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                        <span>What this means:</span>
-                      </div>
-                      <p className="leading-relaxed text-slate-600 pl-4">
-                        The observed movement is small enough that the available evidence does not support a reliable deterioration during this window.
-                        Metric variations are consistent with normal daily fluctuations.
-                      </p>
+              {/* SECTION: WHAT DOES THE DATA SHOW? */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    WHAT DOES THE DATA SHOW?
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Factual signals and observations recorded during the investigated window.
+                  </p>
+                </CardHeader>
+                <CardContent className="pt-4 space-y-4">
+                  {/* Strongest Factual Signal Cards (2-4 cards) */}
+                  {rcData.evidence.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {rcData.evidence.slice(0, 3).map((ev, idx) => {
+                        const label = getHumanReadableSignal(ev.signal, ev.target_entity);
+
+                        return (
+                          <div
+                            key={idx}
+                            className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-1.5 shadow-2xs"
+                          >
+                            <span className="text-xs font-semibold text-slate-700 block truncate">
+                              {label}
+                            </span>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-base font-bold font-mono text-slate-900">
+                                {ev.before_value.toFixed(1)} → {ev.after_value.toFixed(1)}
+                              </span>
+                              <span className={`text-xs font-semibold font-mono ${
+                                ev.relative_change_pct < 0 ? "text-rose-600" : "text-slate-700"
+                              }`}>
+                                ({ev.relative_change_pct > 0 ? "↑" : ev.relative_change_pct < 0 ? "↓" : ""}{" "}
+                                {Math.abs(ev.relative_change_pct).toFixed(1)}%)
+                              </span>
+                            </div>
+                            {ev.details && (
+                              <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                                {ev.details}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ) : (
-                    <div className="p-3.5 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
-                      <div className="flex items-center gap-2 font-semibold text-rose-800">
-                        <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                        <span>What this means:</span>
-                      </div>
-                      <p className="leading-relaxed text-rose-700 pl-4">
-                        The observed shift is statistically significant (p &lt; 0.05). The change is unlikely to be random noise, indicating a measurable dining shift in this window.
-                      </p>
+                  )}
+
+                  {/* Direct observations bullet list */}
+                  {rcData.observations.length > 0 && (
+                    <div className="pt-2">
+                      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block mb-2">
+                        Direct Observations
+                      </span>
+                      <ul className="space-y-1.5 text-xs text-slate-700">
+                        {rcData.observations.map((obs, idx) => (
+                          <li key={idx} className="flex items-start gap-2">
+                            <span className="text-slate-400 font-bold leading-relaxed">•</span>
+                            <span className="leading-relaxed">{obs}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* SECTION 2: WHAT DID THE DATA SHOW? */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Section 2</span>
-                  <CardTitle>WHAT DID THE DATA SHOW?</CardTitle>
-                  <p className="text-xs text-slate-500">
-                    Direct measurements from the selected period and its historical baseline.
+              {/* SECTION: POSSIBLE CONTRIBUTING FACTORS */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    POSSIBLE CONTRIBUTING FACTORS
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Factors identified by matching review patterns, menu repetition, and meal services.
                   </p>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  {/* DIRECT FACTUAL OBSERVATIONS */}
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 mb-2.5 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-                      Direct Factual Observations
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                      {rcData.observations.map((obs, idx) => (
-                        <div key={idx} className="p-3 rounded-lg bg-blue-50/50 border border-blue-100 flex items-start gap-2.5 text-xs text-slate-800">
-                          <span className="text-blue-500 font-bold text-sm leading-none">•</span>
-                          <span className="leading-relaxed">{obs}</span>
-                        </div>
-                      ))}
+                <CardContent className="pt-4">
+                  {rcData.possible_factors.length === 0 ? (
+                    /* NO FACTOR STATE */
+                    <div className="p-5 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-3">
+                      <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shrink-0 mt-0.5">
+                        ✓
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                          NO STRONG CONTRIBUTING FACTOR FOUND
+                        </h4>
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                          {rcData.metric_summary.statistically_significant
+                            ? `The metric changed by ${Math.abs(rcData.metric_summary.change).toFixed(2)}, but no single factor showed sufficient evidence to cross ranking thresholds.`
+                            : "Rating fluctuations remained within normal day-to-day variance. No individual factor showed sufficient evidence."}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* LIST OF FACTORS */
+                    <div className="space-y-4">
+                      {rcData.possible_factors.map((factor, idx) => {
+                        const supportingEvidence = factor.supporting_evidence_indices
+                          ?.map((eIdx) => rcData.evidence[eIdx])
+                          .filter(Boolean) || [];
+                        const factorName = getHumanReadableFactor(factor.factor_id);
+                        const tierLabel = factor.confidence === "HIGH"
+                          ? "High Evidence"
+                          : factor.confidence === "MEDIUM"
+                          ? "Medium Evidence"
+                          : "Low Evidence";
+                        const tierVariant = factor.confidence === "HIGH"
+                          ? "danger"
+                          : factor.confidence === "MEDIUM"
+                          ? "warning"
+                          : "neutral";
 
-                  {/* TRACEABLE EMPIRICAL EVIDENCE */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
-                        Traceable Empirical Evidence
-                      </h4>
-                      <span className="text-[11px] text-slate-500">{rcData.evidence.length} signal(s) evaluated</span>
+                        return (
+                          <div
+                            key={idx}
+                            className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-bold text-slate-900">
+                                  {factorName}
+                                </h4>
+                              </div>
+                              <div className="flex items-center gap-2.5">
+                                <Badge variant={tierVariant} size="sm">
+                                  {tierLabel}
+                                </Badge>
+                                <span className="text-xs text-slate-500 font-medium">
+                                  {Math.round(factor.confidence_score * 100)}% confidence score
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="text-xs text-slate-700 leading-relaxed">
+                              {factor.description}
+                            </p>
+
+                            {/* Supporting signals */}
+                            {supportingEvidence.length > 0 && (
+                              <div className="pt-2 border-t border-slate-200/80">
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 block mb-1.5">
+                                  Supporting Signals:
+                                </span>
+                                <ul className="space-y-1 text-xs text-slate-700">
+                                  {supportingEvidence.map((ev, sIdx) => {
+                                    const signalName = getHumanReadableSignal(ev.signal, ev.target_entity);
+                                    return (
+                                      <li key={sIdx} className="flex items-start gap-2">
+                                        <span className="text-slate-400 font-bold">•</span>
+                                        <span>
+                                          {ev.details || `${signalName}: shifted from ${ev.before_value.toFixed(1)} to ${ev.after_value.toFixed(1)}.`}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            )}
+
+                            {/* Section: Why was this flagged? */}
+                            <div className="pt-2 border-t border-slate-200/80">
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 block mb-1">
+                                Why was this flagged?
+                              </span>
+                              <p className="text-xs text-slate-600 leading-relaxed">
+                                The engine checks for recurring patterns across review text, meal types, and menu items. These signals occurred together in the selected comparison period and contributed to the factor&apos;s evidence score.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
+                  )}
+                </CardContent>
+              </Card>
 
-                    {rcData.evidence.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        No additional empirical signals crossed the configured evidence threshold for this investigation.
+              {/* SECTION: EVIDENCE (Clean data table) */}
+              <Card className="border border-slate-200">
+                <CardHeader className="pb-3 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-bold text-slate-900">
+                        EVIDENCE
+                      </CardTitle>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Quantitative metrics evaluated during the investigation.
                       </p>
-                    ) : (
-                      <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="w-full text-left text-xs sm:text-sm">
-                          <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
-                            <tr>
-                              <th className="py-2.5 px-3">Signal</th>
-                              <th className="py-2.5 px-3">What Was Measured</th>
-                              <th className="py-2.5 px-3">Baseline</th>
-                              <th className="py-2.5 px-3">Problem Window</th>
-                              <th className="py-2.5 px-3">Change</th>
-                              <th className="py-2.5 px-3">Relative</th>
-                              <th className="py-2.5 px-3">Why It Matters</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 text-xs">
-                            {rcData.evidence.map((ev, idx) => (
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      {rcData.evidence.length} signal{rcData.evidence.length === 1 ? "" : "s"} evaluated
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {rcData.evidence.length === 0 ? (
+                    <p className="text-xs text-slate-500 italic py-4 text-center">
+                      No additional empirical signals met the evaluation threshold.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                          <tr>
+                            <th className="py-2.5 px-3">Signal</th>
+                            <th className="py-2.5 px-3">Previous Period</th>
+                            <th className="py-2.5 px-3">Current Period</th>
+                            <th className="py-2.5 px-3">Change</th>
+                            <th className="py-2.5 px-3">Relative Change</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs">
+                          {rcData.evidence.map((ev, idx) => {
+                            const readableName = getHumanReadableSignal(ev.signal, ev.target_entity);
+                            return (
                               <tr key={idx} className="hover:bg-slate-50/70">
-                                <td className="py-2.5 px-3 font-mono text-[11px] text-blue-700 bg-blue-50/30 font-medium">
-                                  {ev.signal}
-                                </td>
-                                <td className="py-2.5 px-3 font-medium text-slate-800">
-                                  {ev.target_entity || ev.signal.replace(/_/g, " ")}
+                                <td className="py-2.5 px-3">
+                                  <span className="font-semibold text-slate-800 block">
+                                    {readableName}
+                                  </span>
+                                  <span className="font-mono text-[10px] text-slate-400 block">
+                                    {ev.signal}
+                                  </span>
                                 </td>
                                 <td className="py-2.5 px-3 text-slate-600 font-mono">
                                   {ev.before_value.toFixed(2)}
@@ -643,396 +805,27 @@ export default function AdminIntelligencePage() {
                                 <td className="py-2.5 px-3 text-slate-600 font-mono">
                                   {ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%
                                 </td>
-                                <td className="py-2.5 px-3 text-slate-600 text-xs max-w-xs">
-                                  {ev.details || "Observed shift between baseline and target evaluation windows."}
-                                </td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* VISUAL EVIDENCE FLOW */}
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">
-                      Reasoning Process: Evidence Flow
-                    </span>
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-xs">
-                      <div className="w-full md:w-1/4 p-3 bg-white rounded-lg border border-slate-200 text-center shadow-2xs">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">1. Observation</span>
-                        <span className="font-bold text-slate-800">
-                          {rcData.metric_summary.previous_value.toFixed(2)} → {rcData.metric_summary.current_value.toFixed(2)}
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          ({rcData.metric_summary.change > 0 ? "+" : ""}{rcData.metric_summary.change.toFixed(2)})
-                        </p>
-                      </div>
-
-                      <span className="text-slate-400 font-bold hidden md:inline">→</span>
-                      <span className="text-slate-400 font-bold md:hidden">↓</span>
-
-                      <div className="w-full md:w-1/4 p-3 bg-white rounded-lg border border-slate-200 text-center shadow-2xs">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">2. Evidence Check</span>
-                        <span className={`font-bold ${rcData.metric_summary.statistically_significant ? "text-rose-700" : "text-slate-700"}`}>
-                          {rcData.metric_summary.statistically_significant ? "Significant Degradation" : "Normal Variation"}
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          {rcData.evidence.length} signal(s) evaluated
-                        </p>
-                      </div>
-
-                      <span className="text-slate-400 font-bold hidden md:inline">→</span>
-                      <span className="text-slate-400 font-bold md:hidden">↓</span>
-
-                      <div className="w-full md:w-1/4 p-3 bg-white rounded-lg border border-slate-200 text-center shadow-2xs">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">3. Factor Check</span>
-                        <span className="font-bold text-slate-800">
-                          {rcData.possible_factors.length > 0
-                            ? `${rcData.possible_factors.length} Factor(s) Flagged`
-                            : "No High-Confidence Factor"}
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Evidence threshold evaluation
-                        </p>
-                      </div>
-
-                      <span className="text-slate-400 font-bold hidden md:inline">→</span>
-                      <span className="text-slate-400 font-bold md:hidden">↓</span>
-
-                      <div className={`w-full md:w-1/4 p-3 rounded-lg border text-center shadow-2xs ${
-                        rcData.metric_summary.statistically_significant && rcData.possible_factors.length > 0
-                          ? "bg-amber-50 border-amber-200"
-                          : "bg-white border-slate-200"
-                      }`}>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block">4. Conclusion</span>
-                        <span className={`font-bold ${
-                          rcData.metric_summary.statistically_significant ? "text-amber-800" : "text-slate-700"
-                        }`}>
-                          {rcData.metric_summary.statistically_significant
-                            ? "Possible Contributing Factor Identified"
-                            : "No Significant Degradation"}
-                        </span>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
-                          Analytical summary
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* SECTION 3: POSSIBLE CONTRIBUTING FACTORS */}
-              <Card>
-                <CardHeader className="pb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Section 3</span>
-                  <CardTitle>POSSIBLE CONTRIBUTING FACTORS</CardTitle>
-                  <p className="text-xs text-slate-500">
-                    Factors are flagged only when the available historical evidence crosses the configured evidence thresholds.
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {rcData.possible_factors.length === 0 ? (
-                    /* EMPTY STATE WHEN NO HIGH-CONFIDENCE FACTOR */
-                    <div className="p-6 rounded-xl bg-slate-50 border border-slate-200 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm">
-                          ✓
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-slate-900">
-                            NO HIGH-CONFIDENCE CONTRIBUTING FACTOR DETECTED
-                          </h4>
-                          <p className="text-xs text-slate-600 mt-0.5">
-                            The selected comparison did not produce enough statistical or empirical evidence to flag a high-confidence contributing factor.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-slate-200">
-                        <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1.5 shadow-2xs">
-                          <span className="text-xs font-bold text-slate-800 block">WHAT THE ENGINE DID FIND</span>
-                          <ul className="text-xs text-slate-600 space-y-1">
-                            <li className="flex items-center gap-1.5 text-emerald-700">
-                              <span>✓</span> <span>Compared baseline vs problem window</span>
-                            </li>
-                            <li className="flex items-center gap-1.5 text-emerald-700">
-                              <span>✓</span> <span>Evaluated statistical significance</span>
-                            </li>
-                            <li className="flex items-center gap-1.5 text-emerald-700">
-                              <span>✓</span> <span>Checked available empirical signals</span>
-                            </li>
-                            <li className="flex items-center gap-1.5 text-emerald-700">
-                              <span>✓</span> <span>Applied configured evidence thresholds</span>
-                            </li>
-                          </ul>
-                        </div>
-
-                        <div className="p-3.5 bg-white rounded-lg border border-slate-200 space-y-1.5 shadow-2xs">
-                          <span className="text-xs font-bold text-slate-800 block">WHAT THIS DOES NOT MEAN</span>
-                          <p className="text-xs text-slate-600 leading-relaxed">
-                            It does not prove that no contributing factor exists. It means the current evidence was insufficient to flag one confidently.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* LIST OF IDENTIFIED CONTRIBUTING FACTORS */
-                    <div className="space-y-4">
-                      {rcData.possible_factors.map((factor, idx) => {
-                        const supportingEvidence = factor.supporting_evidence_indices
-                          ?.map((eIdx) => rcData.evidence[eIdx])
-                          .filter(Boolean) || [];
-
-                        return (
-                          <div key={idx} className="p-5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3 shadow-2xs">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase">Possible Contributing Factor:</span>
-                                <code className="text-xs font-bold text-slate-800 bg-white px-2 py-1 rounded border border-slate-300">
-                                  {factor.factor_id}
-                                </code>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Badge
-                                  variant={factor.confidence === "HIGH" ? "danger" : factor.confidence === "MEDIUM" ? "warning" : "neutral"}
-                                  size="sm"
-                                >
-                                  {factor.confidence} CONFIDENCE
-                                </Badge>
-                                <span className="text-xs font-semibold text-slate-700">
-                                  MODEL EVIDENCE CONFIDENCE: {(factor.confidence_score * 100).toFixed(0)}%
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="text-sm text-slate-800 font-medium">{factor.description}</p>
-
-                            {/* Section 3 Clear Boundary Immediately Below Factor Explanation */}
-                            <div className="pt-2 border-t border-slate-200 space-y-2">
-                              <div>
-                                <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-                                  Why this was flagged
-                                </span>
-                                <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-                                  The factor was ranked because these historical signals were observed together in the selected comparison window.
-                                </p>
-                              </div>
-
-                              <div className="p-2.5 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
-                                <span className="font-bold text-amber-800 shrink-0">Important:</span>
-                                <span className="text-amber-800 leading-relaxed">
-                                  This association does not prove that the factor caused the rating decline.
-                                </span>
-                              </div>
-
-                              <p className="text-[11px] text-slate-500">
-                                Model Evidence Confidence ({(factor.confidence_score * 100).toFixed(0)}%) represents the strength and breadth of supporting empirical signals used to rank the factor. It is not the probability that the factor caused the outcome.
-                              </p>
-
-                              {/* Flagged Evidence chips */}
-                              {supportingEvidence.length > 0 && (
-                                <div className="pt-1">
-                                  <span className="text-xs font-semibold text-slate-700 block mb-1">
-                                    Supporting signals ({supportingEvidence.length}):
-                                  </span>
-                                  <div className="flex flex-wrap gap-2">
-                                    {supportingEvidence.map((ev, sIdx) => (
-                                      <span key={sIdx} className="text-[11px] px-2 py-1 bg-white border border-slate-200 rounded font-mono text-slate-700 shadow-2xs">
-                                        {ev.signal} ({ev.before_value.toFixed(1)} → {ev.after_value.toFixed(1)})
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              {/* SECTION 4: WHY WAS THIS FACTOR FLAGGED? */}
-              {rcData.possible_factors.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Section 4</span>
-                    <CardTitle>WHY WAS THIS FACTOR FLAGGED?</CardTitle>
-                    <p className="text-xs text-slate-500">
-                      The factor was flagged because these empirical signals were observed together in the selected comparison.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {rcData.possible_factors.map((factor, idx) => {
-                      const supportingEvidence = factor.supporting_evidence_indices
-                        ?.map((eIdx) => rcData.evidence[eIdx])
-                        .filter(Boolean) || [];
-
-                      return (
-                        <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-bold text-slate-800">
-                              {factor.factor_id}
-                            </span>
-                            <span className="text-xs font-semibold text-slate-600">
-                              Model Evidence Confidence: {(factor.confidence_score * 100).toFixed(0)}%
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {supportingEvidence.map((ev, sIdx) => (
-                              <div key={sIdx} className="p-3 bg-white rounded-lg border border-slate-200 text-xs space-y-1 shadow-2xs">
-                                <span className="font-mono text-[11px] text-blue-700 block font-semibold truncate">
-                                  {ev.signal}
-                                </span>
-                                <p className="font-medium text-slate-800">
-                                  {ev.target_entity || ev.signal.replace(/_/g, " ")}
-                                </p>
-                                <p className="text-slate-600">
-                                  Shift: <strong className="font-mono">{ev.before_value.toFixed(2)} → {ev.after_value.toFixed(2)}</strong>{" "}
-                                  ({ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%)
-                                </p>
-                                {ev.details && <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{ev.details}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* SECTION: WHAT THE AI CAN AND CANNOT CONCLUDE */}
-              <Card className="border border-slate-300">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm uppercase tracking-wider text-slate-800 flex items-center gap-2">
-                    <span>⚖️</span>
-                    WHAT THE AI CAN AND CANNOT CONCLUDE
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-3.5 rounded-lg bg-emerald-50/60 border border-emerald-200 text-xs space-y-2">
-                      <span className="font-bold text-emerald-900 uppercase tracking-wide block">
-                        CAN CONCLUDE:
-                      </span>
-                      <ul className="space-y-1.5 text-emerald-800">
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
-                          <span>What changed in the measured data</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
-                          <span>Whether the observed change is statistically significant</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
-                          <span>Which historical signals are associated with the observed change</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-emerald-600 font-bold">✓</span>
-                          <span>Which possible contributing factors meet the evidence threshold</span>
-                        </li>
-                      </ul>
-                    </div>
-
-                    <div className="p-3.5 rounded-lg bg-rose-50/60 border border-rose-200 text-xs space-y-2">
-                      <span className="font-bold text-rose-900 uppercase tracking-wide block">
-                        CANNOT CONCLUDE:
-                      </span>
-                      <ul className="space-y-1.5 text-rose-800">
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-rose-600 font-bold">✕</span>
-                          <span>Correlation proves causation</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-rose-600 font-bold">✕</span>
-                          <span>A flagged factor definitely caused the outcome</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-rose-600 font-bold">✕</span>
-                          <span>A future outcome is guaranteed</span>
-                        </li>
-                        <li className="flex items-start gap-1.5">
-                          <span className="text-rose-600 font-bold">✕</span>
-                          <span>A factor will produce the same effect in every future period</span>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div className="p-3 rounded-lg bg-slate-100 text-xs text-slate-700 text-center font-medium">
-                    Core Principle: <strong>&ldquo;Association in historical data does not prove causation.&rdquo;</strong>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* SECTION: INVESTIGATION SUMMARY */}
-              <Card className="border-t-4 border-t-blue-600">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">INVESTIGATION SUMMARY</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">QUESTION</span>
-                      <p className="font-semibold text-slate-800 mt-1">Why did the selected metric change?</p>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">OBSERVED RESULT</span>
-                      <p className="font-bold text-slate-900 mt-1">
-                        {rcData.metric_summary.previous_value.toFixed(2)} → {rcData.metric_summary.current_value.toFixed(2)}{" "}
-                        <span className="text-slate-600 font-normal">
-                          ({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)
-                        </span>
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">STATISTICAL RESULT</span>
-                      <p className="font-semibold text-slate-800 mt-1">
-                        {rcData.metric_summary.statistically_significant
-                          ? "Statistically significant change detected (p < 0.05)"
-                          : "No statistically significant change detected."}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">HIGH-CONFIDENCE FACTORS</span>
-                      <p className="font-semibold text-slate-800 mt-1">
-                        {rcData.possible_factors.length > 0
-                          ? rcData.possible_factors.map((f) => f.factor_id).join(", ")
-                          : "None detected."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 p-3 rounded-lg bg-blue-50/50 border border-blue-100 text-xs text-slate-700">
-                    <span className="font-semibold text-slate-800">INTERPRETATION: </span>
-                    {rcData.metric_summary.statistically_significant ? (
-                      rcData.possible_factors.length > 0 ? (
-                        <span>The observed degradation is associated with specific empirical factors that crossed evidence thresholds. Further kitchen inquiry is recommended around the flagged preparation signals.</span>
-                      ) : (
-                        <span>The observed shift is statistically significant, but no single factor met high-confidence ranking criteria. Multiple minor variations may have compounded.</span>
-                      )
-                    ) : (
-                      <span>The observed movement is consistent with normal historical variation in the selected comparison window.</span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* CAUSALITY NOTE (AT BOTTOM) */}
+              <p className="text-xs text-slate-500 text-center pt-2">
+                Note: These patterns show associations in historical data. They do not prove that a factor caused the observed change.
+              </p>
             </div>
           )}
 
           {!rcData && !rcLoading && !rcError && (
             <EmptyState
-              title="No Diagnostic Run Selected"
-              description="Select a target metric and problem window above, then click 'Run Diagnosis' to analyze operational anomalies."
+              title="No Analysis Selected"
+              description="Choose the period you want to investigate above, then click 'Run Analysis'."
             />
           )}
         </div>
