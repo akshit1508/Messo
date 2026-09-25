@@ -111,8 +111,7 @@ interface DriverMetric {
   title: string;
   metricValue: string;
   importancePercent: number;
-  impactLevel: "High Impact" | "Moderate Impact" | "Baseline Anchor";
-  insight: string;
+  explanation: string;
 }
 
 function getDriverMetric(
@@ -121,99 +120,113 @@ function getDriverMetric(
   featureSummary: Record<string, any> = {}
 ): DriverMetric {
   const importancePercent = Math.round(importance * 100);
-  const impactLevel: "High Impact" | "Moderate Impact" | "Baseline Anchor" =
-    importancePercent >= 20 ? "High Impact" : importancePercent >= 10 ? "Moderate Impact" : "Baseline Anchor";
 
   switch (featName) {
     case "food_frequency_14d": {
       const val = featureSummary["food_frequency_14d"];
       const count = val != null ? Number(val) : null;
       return {
-        title: "Menu Frequency (14 Days)",
-        metricValue: count !== null ? `${count} ${count === 1 ? "serving" : "servings"} in last 14d` : "1 serving in last 14d",
+        title: "Recent serving frequency",
+        metricValue: count !== null ? `${count} ${count === 1 ? "serving" : "servings"} in the last 14 days` : "1 serving in the last 14 days",
         importancePercent,
-        impactLevel,
-        insight: count === 0
-          ? "Dish has not been served recently, reducing student repetition fatigue."
-          : count != null && count <= 2
-          ? "Low repetition frequency prevents student menu fatigue, keeping satisfaction high."
-          : "Higher repetition may cause slight dining fatigue among regular mess diners.",
+        explanation: "The forecast uses recent serving frequency as one of its historical inputs.",
       };
     }
     case "days_since_last_served": {
       const val = featureSummary["days_since_last_served"];
       const days = val != null ? Math.round(Number(val)) : null;
       return {
-        title: "Serving Recency (Spacing)",
-        metricValue: days !== null ? `${days} days since last served` : "5 days ago",
+        title: "Time since last served",
+        metricValue: days !== null ? `${days} ${days === 1 ? "day" : "days"}` : "5 days",
         importancePercent,
-        impactLevel,
-        insight: days != null && days >= 5
-          ? "Well-spaced resting interval since this dish was last served on the dining menu."
-          : "Recently served dish; closer spacing can slightly temper student enthusiasm.",
+        explanation: "The forecast considers how recently this dish was last served.",
       };
     }
     case "food_last_served_mean": {
       const val = featureSummary["food_last_served_mean"];
       const score = val != null ? Number(val).toFixed(2) : null;
       return {
-        title: "Recent Dining Rating",
-        metricValue: score ? `${score} ★ recent score` : "Recent rating pattern",
+        title: "Recent rating",
+        metricValue: score ? `${score} ★` : "Recent rating",
         importancePercent,
-        impactLevel,
-        insight: "Student satisfaction recorded during the dish's most recent appearance on the menu.",
-      };
-    }
-    case "food_all_time_mean": {
-      const val = featureSummary["food_all_time_mean"];
-      const score = val != null ? Number(val).toFixed(2) : null;
-      return {
-        title: "Historical All-Time Average",
-        metricValue: score ? `${score} ★ historical avg` : "Historical baseline",
-        importancePercent,
-        impactLevel,
-        insight: "Long-term historical rating baseline across all logged student reviews.",
+        explanation: "Recent ratings are used to estimate the upcoming rating.",
       };
     }
     case "food_30d_std": {
       const val = featureSummary["food_30d_std"];
       const spread = val != null ? Number(val).toFixed(2) : null;
       return {
-        title: "Rating Consistency (30 Days)",
-        metricValue: spread ? `±${spread} ★ score variance` : "Standard variation",
+        title: "Recent rating variation",
+        metricValue: spread ? `±${spread} ★` : "Standard variation",
         importancePercent,
-        impactLevel,
-        insight: "Stability of feedback across different preparation days and shifts.",
+        explanation: "The model considers how much ratings have varied recently.",
+      };
+    }
+    case "food_all_time_mean": {
+      const val = featureSummary["food_all_time_mean"];
+      const score = val != null ? Number(val).toFixed(2) : null;
+      return {
+        title: "Historical average",
+        metricValue: score ? `${score} ★` : "Historical average",
+        importancePercent,
+        explanation: "Long-term ratings provide a baseline for the forecast.",
+      };
+    }
+    case "food_7d_mean": {
+      const val = featureSummary["food_7d_mean"];
+      const score = val != null ? Number(val).toFixed(2) : null;
+      return {
+        title: "7-day average rating",
+        metricValue: score ? `${score} ★` : "7-day rating",
+        importancePercent,
+        explanation: "The forecast includes the 7-day average rating as an input.",
+      };
+    }
+    case "food_30d_mean": {
+      const val = featureSummary["food_30d_mean"];
+      const score = val != null ? Number(val).toFixed(2) : null;
+      return {
+        title: "30-day average rating",
+        metricValue: score ? `${score} ★` : "30-day rating",
+        importancePercent,
+        explanation: "The model incorporates the 30-day average rating for this dish.",
       };
     }
     case "poll_vote_share_recent": {
       const val = featureSummary["poll_vote_share_recent"];
       const share = val != null ? Number(val).toFixed(1) : null;
       return {
-        title: "Student Poll Preference",
-        metricValue: share ? `${share}% student vote share` : "Poll voting share",
+        title: "Student poll preference",
+        metricValue: share ? `${share}% vote share` : "Poll voting share",
         importancePercent,
-        impactLevel,
-        insight: "Student voting preference recorded in recent mess menu preference polls.",
+        explanation: "The model incorporates student voting preference from recent preference polls.",
       };
     }
     case "day_of_week":
     case "is_weekend": {
       return {
-        title: "Day of Week & Weekend Factor",
-        metricValue: "Weekend vs Weekday Pattern",
+        title: "Day of week pattern",
+        metricValue: "Weekday vs weekend schedule",
         importancePercent,
-        impactLevel,
-        insight: "Captures natural attendance shifts and student mood differences across weekdays vs weekends.",
+        explanation: "The forecast accounts for differences between weekday and weekend meal attendance.",
+      };
+    }
+    case "total_complaints_7d": {
+      const val = featureSummary["total_complaints_7d"];
+      const count = val != null ? Number(val) : null;
+      return {
+        title: "Recent complaint volume",
+        metricValue: count !== null ? `${count} complaints in last 7 days` : "Feedback volume",
+        importancePercent,
+        explanation: "The model considers recent logged feedback and complaint volume.",
       };
     }
     default: {
       return {
         title: getHumanReadableFeature(featName),
-        metricValue: featureSummary[featName] != null ? String(featureSummary[featName]) : `${importancePercent}% influence`,
+        metricValue: featureSummary[featName] != null ? String(featureSummary[featName]) : "Historical record",
         importancePercent,
-        impactLevel,
-        insight: "Statistical parameter factoring into the forecast calculation.",
+        explanation: "This historical signal is included in the model estimate.",
       };
     }
   }
@@ -1345,15 +1358,15 @@ export default function AdminIntelligencePage() {
                 );
               })()}
 
-              {/* WHAT IS INFLUENCING THIS ESTIMATE? */}
+              {/* WHAT IS THIS FORECAST BASED ON? */}
               {fcData.top_features && fcData.top_features.length > 0 && (
                 <Card className="border border-slate-200">
                   <CardHeader className="pb-3 border-b border-slate-100">
                     <CardTitle className="text-base font-bold text-slate-900">
-                      WHAT IS INFLUENCING THIS ESTIMATE?
+                      WHAT IS THIS FORECAST BASED ON?
                     </CardTitle>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Real dining metrics and model feature weights driving the forecast calculation.
+                      These are historical signals the model uses when estimating the upcoming rating.
                     </p>
                   </CardHeader>
                   <CardContent className="pt-5 space-y-4">
@@ -1370,13 +1383,13 @@ export default function AdminIntelligencePage() {
                           <Badge variant="neutral" className="text-[11px] font-semibold text-slate-700 bg-white">
                             Zero Historical Reviews
                           </Badge>
-                          <span className="text-xs font-semibold text-slate-700">Cold-Start Dish Baseline</span>
+                          <span className="text-xs font-semibold text-slate-700">Baseline Prior</span>
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Because <strong className="text-slate-800 font-semibold">{fcData.entity || fcFood}</strong> has no recorded dining reviews in the mess database, this forecast is anchored to the hostel category baseline prior (<strong>3.50 ★</strong>) with an expanded prediction interval (<strong>2.43 – 4.57 ★</strong>).
+                          Because <strong className="text-slate-800 font-semibold">{fcData.entity || fcFood}</strong> has no recorded dining reviews in the mess database, this forecast is based on the category baseline prior (<strong>3.50 ★</strong>) with an expanded prediction interval (<strong>2.43 – 4.57 ★</strong>).
                         </p>
                         <p className="text-xs text-slate-500 leading-relaxed">
-                          Dynamic model feature weights (menu frequency fatigue, serving spacing, and student preference) will activate automatically as soon as student ratings are submitted.
+                          Historical feature weighting will activate once reviews are recorded for this dish.
                         </p>
                       </div>
                     ) : (
@@ -1388,39 +1401,33 @@ export default function AdminIntelligencePage() {
                               key={idx}
                               className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3"
                             >
-                              <div>
+                              <div className="space-y-1.5">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-bold text-slate-800">
+                                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                                     {driver.title}
                                   </span>
-                                  <span
-                                    className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${
-                                      driver.impactLevel === "High Impact"
-                                        ? "bg-blue-100 text-blue-800"
-                                        : driver.impactLevel === "Moderate Impact"
-                                        ? "bg-indigo-50 text-indigo-700"
-                                        : "bg-slate-200 text-slate-700"
-                                    }`}
-                                  >
-                                    {driver.importancePercent}% · {driver.impactLevel}
+                                  <span className="text-xs font-semibold text-slate-700 font-mono">
+                                    Model weight: {driver.importancePercent}%
                                   </span>
                                 </div>
-                                <div className="mt-2.5">
-                                  <span className="text-lg font-extrabold text-slate-900 font-mono block">
-                                    {driver.metricValue}
-                                  </span>
-                                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                                    {driver.insight}
-                                  </p>
+                                <div className="text-xl font-bold text-slate-900 font-mono">
+                                  {driver.metricValue}
                                 </div>
+                                <p className="text-xs text-slate-600 leading-relaxed pt-0.5">
+                                  {driver.explanation}
+                                </p>
                               </div>
-                              <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    driver.impactLevel === "High Impact" ? "bg-blue-600" : "bg-slate-500"
-                                  }`}
-                                  style={{ width: `${Math.min(100, Math.max(8, driver.importancePercent))}%` }}
-                                />
+
+                              <div className="space-y-1 pt-1">
+                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-blue-600 h-full rounded-full transition-all"
+                                    style={{ width: `${Math.min(100, Math.max(5, driver.importancePercent))}%` }}
+                                  />
+                                </div>
+                                <p className="text-[11px] text-slate-400">
+                                  Relative importance of this input in the forecast model.
+                                </p>
                               </div>
                             </div>
                           );
@@ -1429,7 +1436,7 @@ export default function AdminIntelligencePage() {
                     )}
 
                     <p className="text-xs text-slate-500 pt-1">
-                      Feature importances represent relative weightings from the Gradient Boosting model trained on historical mess records.
+                      These are historical inputs used by the forecasting model. They are not proven causes of the predicted rating.
                     </p>
 
                     {/* Expandable Technical Model Details */}
@@ -1448,7 +1455,7 @@ export default function AdminIntelligencePage() {
                               <tr>
                                 <th className="py-1.5 px-2">Technical Feature</th>
                                 <th className="py-1.5 px-2">Human Label</th>
-                                <th className="py-1.5 px-2">Weight</th>
+                                <th className="py-1.5 px-2">Model Weight</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-mono">
