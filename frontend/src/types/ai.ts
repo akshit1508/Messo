@@ -37,6 +37,115 @@ export interface DataWindowInfo {
   cohort_filter?: string;
 }
 
+export interface DishFeedbackItem {
+  food_name: string;
+  meal_type?: string;
+  review_count: number;
+  average_rating: number;
+  previous_rating?: number | null;
+  change?: number | null;
+}
+
+export interface RatingDistribution {
+  stars_1: number;
+  stars_2: number;
+  stars_3: number;
+  stars_4: number;
+  stars_5: number;
+  stars_1_pct: number;
+  stars_2_pct: number;
+  stars_3_pct: number;
+  stars_4_pct: number;
+  stars_5_pct: number;
+}
+
+export interface MealRatingItem {
+  meal_type: string;
+  target_rating: number;
+  baseline_rating: number;
+  change: number;
+  review_count: number;
+}
+
+export interface StudentFeedbackTheme {
+  theme: string;
+  count: number;
+  share_pct: number;
+  sentiment: "positive" | "negative";
+  example_note?: string;
+}
+
+export interface FoodSatisfactionDetails {
+  unique_students: number;
+  comparison_unique_students: number;
+  rating_distribution: RatingDistribution;
+  meal_breakdown: MealRatingItem[];
+  common_concerns: StudentFeedbackTheme[];
+  positive_highlights: StudentFeedbackTheme[];
+  most_reviewed_dishes: DishFeedbackItem[];
+  lowest_rated_dishes: DishFeedbackItem[];
+  highest_rated_dishes: DishFeedbackItem[];
+}
+
+export interface ComplaintThemeItem {
+  theme_id: string;
+  theme_name: string;
+  count: number;
+  baseline_count: number;
+  change: number;
+  share_pct: number;
+  velocity_multiplier: number;
+}
+
+export interface ComplaintDailyCount {
+  date: string;
+  count: number;
+}
+
+export interface ComplaintVolumeDetails {
+  unique_complainants: number;
+  comparison_unique_complainants: number;
+  themes: ComplaintThemeItem[];
+  top_theme_name?: string | null;
+  top_theme_count: number;
+  top_theme_share_pct: number;
+  daily_trend: ComplaintDailyCount[];
+  category_breakdown: Array<{ category: string; count: number; share_pct: number }>;
+}
+
+export interface PollOptionChoice {
+  food_name: string;
+  vote_count: number;
+  share_pct: number;
+}
+
+export interface ActivePollItem {
+  poll_id: number;
+  poll_date: string;
+  total_votes: number;
+  winning_option: string;
+  winning_share_pct: number;
+  options: PollOptionChoice[];
+}
+
+export interface TopChosenOption {
+  food_name: string;
+  total_votes: number;
+  polls_featured: number;
+}
+
+export interface PollParticipationDetails {
+  unique_voters: number;
+  comparison_unique_voters: number;
+  total_polls: number;
+  comparison_total_polls: number;
+  average_votes_per_poll: number;
+  comparison_average_votes_per_poll: number;
+  most_active_polls: ActivePollItem[];
+  top_chosen_options: TopChosenOption[];
+  daily_trend: Array<{ date: string; votes: number }>;
+}
+
 export interface InvestigationResponse {
   investigation_id: string;
   target_metric: string;
@@ -47,6 +156,9 @@ export interface InvestigationResponse {
   data_window: DataWindowInfo;
   engine_version: string;
   computed_at: string;
+  food_details?: FoodSatisfactionDetails;
+  complaint_details?: ComplaintVolumeDetails;
+  poll_details?: PollParticipationDetails;
 }
 
 export interface InvestigationRequest {

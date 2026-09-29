@@ -78,6 +78,103 @@ class InvestigationRequest(BaseModel):
                 values['target_metric'] = values['metric']
         return values
 
+class DishFeedbackItem(BaseModel):
+    food_name: str
+    meal_type: Optional[str] = None
+    review_count: int
+    average_rating: float
+    previous_rating: Optional[float] = None
+    change: Optional[float] = None
+
+class RatingDistribution(BaseModel):
+    stars_1: int = 0
+    stars_2: int = 0
+    stars_3: int = 0
+    stars_4: int = 0
+    stars_5: int = 0
+    stars_1_pct: float = 0.0
+    stars_2_pct: float = 0.0
+    stars_3_pct: float = 0.0
+    stars_4_pct: float = 0.0
+    stars_5_pct: float = 0.0
+
+class MealRatingItem(BaseModel):
+    meal_type: str
+    target_rating: float
+    baseline_rating: float
+    change: float
+    review_count: int
+
+class StudentFeedbackTheme(BaseModel):
+    theme: str
+    count: int
+    share_pct: float
+    sentiment: str = "negative"
+    example_note: Optional[str] = None
+
+class FoodSatisfactionDetails(BaseModel):
+    unique_students: int
+    comparison_unique_students: int
+    rating_distribution: RatingDistribution
+    meal_breakdown: List[MealRatingItem] = Field(default_factory=list)
+    common_concerns: List[StudentFeedbackTheme] = Field(default_factory=list)
+    positive_highlights: List[StudentFeedbackTheme] = Field(default_factory=list)
+    most_reviewed_dishes: List[DishFeedbackItem] = Field(default_factory=list)
+    lowest_rated_dishes: List[DishFeedbackItem] = Field(default_factory=list)
+    highest_rated_dishes: List[DishFeedbackItem] = Field(default_factory=list)
+
+class ComplaintThemeItem(BaseModel):
+    theme_id: str
+    theme_name: str
+    count: int
+    baseline_count: int
+    change: int
+    share_pct: float
+    velocity_multiplier: float = 1.0
+
+class ComplaintDailyCount(BaseModel):
+    date: str
+    count: int
+
+class ComplaintVolumeDetails(BaseModel):
+    unique_complainants: int
+    comparison_unique_complainants: int
+    themes: List[ComplaintThemeItem] = Field(default_factory=list)
+    top_theme_name: Optional[str] = None
+    top_theme_count: int = 0
+    top_theme_share_pct: float = 0.0
+    daily_trend: List[ComplaintDailyCount] = Field(default_factory=list)
+    category_breakdown: List[Dict[str, Any]] = Field(default_factory=list)
+
+class PollOptionChoice(BaseModel):
+    food_name: str
+    vote_count: int
+    share_pct: float
+
+class ActivePollItem(BaseModel):
+    poll_id: int
+    poll_date: str
+    total_votes: int
+    winning_option: str
+    winning_share_pct: float
+    options: List[PollOptionChoice] = Field(default_factory=list)
+
+class TopChosenOption(BaseModel):
+    food_name: str
+    total_votes: int
+    polls_featured: int
+
+class PollParticipationDetails(BaseModel):
+    unique_voters: int
+    comparison_unique_voters: int
+    total_polls: int
+    comparison_total_polls: int
+    average_votes_per_poll: float
+    comparison_average_votes_per_poll: float
+    most_active_polls: List[ActivePollItem] = Field(default_factory=list)
+    top_chosen_options: List[TopChosenOption] = Field(default_factory=list)
+    daily_trend: List[Dict[str, Any]] = Field(default_factory=list)
+
 class InvestigationResponse(BaseModel):
     investigation_id: str
     target_metric: str
@@ -88,6 +185,9 @@ class InvestigationResponse(BaseModel):
     data_window: DataWindowInfo
     engine_version: str = "rc-engine-v2.0-statistical"
     computed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    food_details: Optional[FoodSatisfactionDetails] = None
+    complaint_details: Optional[ComplaintVolumeDetails] = None
+    poll_details: Optional[PollParticipationDetails] = None
 
 # ==========================================
 # 2. FORECAST ENGINE SCHEMAS

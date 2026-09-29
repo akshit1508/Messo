@@ -198,6 +198,23 @@ class MesoDbClient:
                     ])
                 return df
 
+    def get_poll_unique_voters(self, start_date: date, end_date: date) -> int:
+        """
+        Calculates exact count of distinct students who voted on polls in the date window.
+        """
+        query = """
+            SELECT COUNT(DISTINCT pv.user_id) AS cnt
+            FROM poll_votes pv
+            JOIN poll_options po ON pv.option_id = po.id
+            JOIN food_polls fp ON po.poll_id = fp.id
+            WHERE fp.poll_date >= %s AND fp.poll_date <= %s
+        """
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, [start_date.isoformat(), end_date.isoformat()])
+                row = cur.fetchone()
+                return int(row['cnt']) if row and row.get('cnt') is not None else 0
+
     def get_foods(self) -> pd.DataFrame:
         query = "SELECT id, name, meal_type FROM foods ORDER BY name ASC"
         with self._get_connection() as conn:

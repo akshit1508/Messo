@@ -161,10 +161,50 @@ async def test_7_no_meaningful_change(engine):
     assert any("normal historical fluctuations" in obs or "no statistically significant" in obs for obs in res.observations)
     print("\n[Test 7 Passed] Stability test passed. No factors fabricated when metrics are steady.")
 
+@pytest.mark.asyncio
+async def test_8_complaint_volume_metric(engine):
+    """
+    Verifies that complaint_volume investigates complaint counts and rates,
+    not rating values.
+    """
+    req = InvestigationRequest(
+        metric="complaint_volume",
+        start_date=date(2026, 5, 22),
+        end_date=date(2026, 6, 21),
+        comparison_start_date=date(2026, 4, 21),
+        comparison_end_date=date(2026, 5, 21)
+    )
+    res = await engine.investigate(req)
+    assert res.target_metric == "complaint_volume"
+    assert res.metric_summary.metric == "complaint_volume"
+    assert res.metric_summary.current_value >= 100  # Actual complaint count
+    assert "complaint" in res.observations[0].lower()
+    assert "food satisfaction" not in res.observations[0].lower()
+    print("\n[Test 8 Passed] Complaint volume metric correctly analyzed:", res.metric_summary.current_value)
+
+@pytest.mark.asyncio
+async def test_9_poll_participation_metric(engine):
+    """
+    Verifies that poll_participation investigates vote volume, not food ratings.
+    """
+    req = InvestigationRequest(
+        metric="poll_participation",
+        start_date=date(2026, 5, 22),
+        end_date=date(2026, 6, 21),
+        comparison_start_date=date(2026, 4, 21),
+        comparison_end_date=date(2026, 5, 21)
+    )
+    res = await engine.investigate(req)
+    assert res.target_metric == "poll_participation"
+    assert res.metric_summary.metric == "poll_participation"
+    assert res.metric_summary.current_value > 500  # Total vote count
+    assert "vote" in res.observations[0].lower()
+    print("\n[Test 9 Passed] Poll participation metric correctly analyzed:", res.metric_summary.current_value)
+
 if __name__ == "__main__":
     async def main():
         e = RootCauseEngine()
-        print("Running all 7 Root Cause Engine integration tests...")
+        print("Running all 9 Root Cause Engine integration tests...")
         await test_1_rating_decline_detection(e)
         await test_2_oiliness_scenario(e)
         await test_3_repetition_scenario_window1(e)
@@ -172,6 +212,9 @@ if __name__ == "__main__":
         await test_5_meal_specific_concentration(e)
         await test_6_temporary_anomaly(e)
         await test_7_no_meaningful_change(e)
-        print("\nAll 7 tests passed successfully!")
+        await test_8_complaint_volume_metric(e)
+        await test_9_poll_participation_metric(e)
+        print("\nAll 9 tests passed successfully!")
 
     asyncio.run(main())
+

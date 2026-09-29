@@ -49,6 +49,49 @@ function getHumanReadableFeature(rawFeature: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatHumanDate(dateStr?: string | null): string {
+  if (!dateStr) return "";
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const year = parts[0];
+      const monthIndex = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return `${day} ${months[monthIndex]} ${year}`;
+      }
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+    }
+  } catch {
+    // fallback
+  }
+  return dateStr;
+}
+
+function formatMetricValue(val: number, metric: string): string {
+  if (metric === "food_satisfaction") {
+    return `${val.toFixed(2)} ★`;
+  }
+  return `${Math.round(val).toLocaleString()}`;
+}
+
+function getMetricSampleLabel(metric: string, count: number): string {
+  if (metric === "food_satisfaction") {
+    return `${count.toLocaleString()} ${count === 1 ? "review" : "reviews"}`;
+  }
+  if (metric === "complaint_volume") {
+    return `${count.toLocaleString()} ${count === 1 ? "complaint" : "complaints"}`;
+  }
+  if (metric === "poll_participation") {
+    return `${count.toLocaleString()} ${count === 1 ? "vote" : "votes"}`;
+  }
+  return `${count.toLocaleString()} items`;
+}
+
 function formatForecastDate(dateStr: string): string {
   try {
     const parts = dateStr.split("-");
@@ -233,10 +276,16 @@ function getDriverMetric(
 }
 
 const FACTOR_TITLE_MAP: Record<string, string> = {
-  HIGH_OIL_PREPARATION: "Oil / Greasiness",
+  HIGH_OIL_PREPARATION: "Oiliness & Heavy Preparation",
   MENU_REPETITION_FATIGUE: "Menu Repetition Fatigue",
-  DINNER_SERVICE_CONCENTRATION: "Dinner Service Concentration",
-  TEMPORARY_OPERATIONAL_ANOMALY: "Temporary Operational Anomaly",
+  DINNER_SERVICE_CONCENTRATION: "Dinner Service Preparation",
+  TEMPORARY_OPERATIONAL_ANOMALY: "Temporary Operational Disruption",
+  COMPLAINT_SURGE_OIL_GREASINESS: "Concentration in Oil & Greasiness Reports",
+  COMPLAINT_SURGE_HYGIENE_CLEANLINESS: "Spike in Hygiene & Cleanliness Reports",
+  COMPLAINT_SURGE_TASTE_SEASONING: "Spike in Taste & Seasoning Complaints",
+  COMPLAINT_SURGE_MEAL_TIMELINESS: "Spike in Service Delay Reports",
+  COMPLAINT_SURGE_TEMPERATURE_FRESHNESS: "Spike in Food Temperature Complaints",
+  POLL_ENGAGEMENT_DROP: "Decrease in Poll Voting Activity",
 };
 
 function getHumanReadableFactor(factorId: string): string {
@@ -245,23 +294,668 @@ function getHumanReadableFactor(factorId: string): string {
 }
 
 const SIGNAL_TITLE_MAP: Record<string, string> = {
-  oil_complaint_spike: "Oil / Greasiness Mentions",
-  food_rating_drop_dal: "Dal Tadka Feedback",
+  average_food_rating_shift: "Average Food Satisfaction",
+  complaint_volume_shift: "Total Complaint Volume",
+  poll_vote_volume_shift: "Student Poll Votes",
+  poll_turnout_average: "Average Votes Per Poll",
+  active_polls_conducted: "Polls Conducted",
+  complaint_theme_velocity_oil: "Oiliness / Greasiness Mentions",
+  food_rating_drop: "Dish Rating Shift",
+  meal_specific_rating_divergence: "Dinner Service Rating",
   meal_rating_drop_dinner: "Dinner Service Rating",
   high_food_frequency: "Dish Repetition Frequency",
   poll_preference_vote_share: "Poll Preference Vote Share",
-  post_incident_rating_recovery: "Post-Incident Recovery Rating",
+  post_incident_rating_recovery: "Post-Incident Recovery",
 };
 
 function getHumanReadableSignal(signal: string, targetEntity?: string): string {
-  if (targetEntity && signal === "food_rating_drop_dal") {
-    return `${targetEntity} Feedback`;
-  }
-  if (targetEntity && signal === "high_food_frequency") {
-    return `${targetEntity} Frequency`;
+  if (targetEntity && targetEntity !== "All" && targetEntity !== "Overall Dining" && targetEntity !== "Overall Mess" && targetEntity !== "Kitchen Preparation") {
+    if (signal === "food_rating_drop" || signal === "average_food_rating_shift") {
+      return `${targetEntity} Rating`;
+    }
+    if (signal.includes("complaint_theme")) {
+      return `${targetEntity} Complaints`;
+    }
+    if (signal === "high_food_frequency") {
+      return `${targetEntity} Frequency`;
+    }
+    if (signal === "meal_specific_rating_divergence") {
+      return `${targetEntity} Service Rating`;
+    }
+    return targetEntity;
   }
   if (SIGNAL_TITLE_MAP[signal]) return SIGNAL_TITLE_MAP[signal];
   return signal.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
+  const details = data.food_details;
+  if (!details) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* Rating Distribution & Meal Ratings Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Rating Breakdown */}
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              RATING DISTRIBUTION
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Breakdown of {data.data_window.target_sample_count.toLocaleString()} reviews submitted across {details.unique_students} students.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-2.5">
+            {[
+              { star: 5, count: details.rating_distribution.stars_5, pct: details.rating_distribution.stars_5_pct },
+              { star: 4, count: details.rating_distribution.stars_4, pct: details.rating_distribution.stars_4_pct },
+              { star: 3, count: details.rating_distribution.stars_3, pct: details.rating_distribution.stars_3_pct },
+              { star: 2, count: details.rating_distribution.stars_2, pct: details.rating_distribution.stars_2_pct },
+              { star: 1, count: details.rating_distribution.stars_1, pct: details.rating_distribution.stars_1_pct },
+            ].map((r) => (
+              <div key={r.star} className="flex items-center gap-3 text-xs">
+                <span className="w-10 font-medium text-slate-700 font-mono">{r.star} ★</span>
+                <div className="flex-1 h-3.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${r.star >= 4 ? "bg-emerald-500" : r.star === 3 ? "bg-amber-400" : "bg-rose-500"}`}
+                    style={{ width: `${Math.max(r.pct, 1)}%` }}
+                  />
+                </div>
+                <span className="w-14 text-right font-mono font-semibold text-slate-800">
+                  {r.count.toLocaleString()}
+                </span>
+                <span className="w-12 text-right font-mono text-slate-500">
+                  {r.pct.toFixed(1)}%
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Meal-Level Breakdown */}
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              MEAL-LEVEL PERFORMANCE
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Average satisfaction by meal service during the investigated window.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-3">
+            {details.meal_breakdown.map((meal) => (
+              <div key={meal.meal_type} className="p-3 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{meal.meal_type} Service</h4>
+                  <p className="text-xs text-slate-500">
+                    {meal.review_count.toLocaleString()} reviews • previous {meal.baseline_rating.toFixed(2)} ★
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-base font-bold font-mono text-slate-900">{meal.target_rating.toFixed(2)} ★</p>
+                  <p className={`text-xs font-semibold font-mono ${meal.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                    {meal.change > 0 ? "+" : ""}{meal.change.toFixed(2)} ★
+                  </p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* WHAT STUDENTS SAID */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            WHAT STUDENTS SAID
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Key dining feedback themes and satisfaction highlights during this period.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Most Common Concerns */}
+          <div className="p-4 rounded-lg bg-rose-50/50 border border-rose-100 space-y-2.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800">
+              Most Common Concerns
+            </h4>
+            {details.common_concerns.length > 0 ? (
+              <ul className="space-y-2 text-xs text-slate-700">
+                {details.common_concerns.map((c, idx) => (
+                  <li key={idx} className="flex items-center justify-between">
+                    <span className="font-medium text-slate-800">• {c.theme}</span>
+                    <span className="font-mono text-rose-700 font-semibold">{c.count} complaints</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-500">No concentrated negative themes reported.</p>
+            )}
+          </div>
+
+          {/* Most Positive Feedback */}
+          <div className="p-4 rounded-lg bg-emerald-50/50 border border-emerald-100 space-y-2.5">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+              Positive Feedback Highlights
+            </h4>
+            {details.positive_highlights.length > 0 ? (
+              <ul className="space-y-2 text-xs text-slate-700">
+                {details.positive_highlights.map((p, idx) => (
+                  <li key={idx} className="flex items-center justify-between">
+                    <span className="font-medium text-slate-800">• {p.theme}</span>
+                    <span className="font-mono text-emerald-700 font-semibold">{p.count} reviews</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-500">Feedback was generally neutral during this period.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* FOOD FEEDBACK (Dishes) */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            FOOD FEEDBACK & DISH RATINGS
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Ratings for dishes served during the investigated window.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Most Reviewed Dishes
+            </h4>
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-3">Dish Name</th>
+                    <th className="py-2.5 px-3">Meal Type</th>
+                    <th className="py-2.5 px-3">Review Count</th>
+                    <th className="py-2.5 px-3">Investigated Rating</th>
+                    <th className="py-2.5 px-3">Previous Rating</th>
+                    <th className="py-2.5 px-3">Change</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {details.most_reviewed_dishes.map((dish, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/70">
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">{dish.food_name}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{dish.meal_type || "All"}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-700">{dish.review_count.toLocaleString()}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{dish.average_rating.toFixed(2)} ★</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">
+                        {dish.previous_rating !== null && dish.previous_rating !== undefined ? `${dish.previous_rating.toFixed(2)} ★` : "—"}
+                      </td>
+                      <td className={`py-2.5 px-3 font-mono font-semibold ${
+                        dish.change !== null && dish.change !== undefined
+                          ? dish.change < 0 ? "text-rose-600" : "text-emerald-600"
+                          : "text-slate-500"
+                      }`}>
+                        {dish.change !== null && dish.change !== undefined
+                          ? `${dish.change > 0 ? "+" : ""}${dish.change.toFixed(2)} ★`
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-700 mb-2">
+                Lowest-Rated Dishes (Min 20 reviews)
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {details.lowest_rated_dishes.map((dish, idx) => (
+                  <li key={idx} className="p-2.5 rounded bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <span className="font-semibold text-slate-800">{dish.food_name}</span>
+                    <span className="font-mono font-bold text-rose-600">{dish.average_rating.toFixed(2)} ★ ({dish.review_count} reviews)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-2">
+                Highest-Rated Dishes (Min 20 reviews)
+              </h4>
+              <ul className="space-y-1.5 text-xs">
+                {details.highest_rated_dishes.map((dish, idx) => (
+                  <li key={idx} className="p-2.5 rounded bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <span className="font-semibold text-slate-800">{dish.food_name}</span>
+                    <span className="font-mono font-bold text-emerald-600">{dish.average_rating.toFixed(2)} ★ ({dish.review_count} reviews)</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PATTERNS WORTH LOOKING INTO */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            PATTERNS WORTH LOOKING INTO
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Key factors observed alongside the shift in food satisfaction.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {data.possible_factors.length === 0 ? (
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-sm font-semibold text-slate-800">Nothing clearly stood out.</p>
+              <p className="text-xs text-slate-500 mt-0.5">No dominant food quality or preparation factor was observed.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.possible_factors.map((factor, idx) => (
+                <div key={idx} className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-900">{getHumanReadableFactor(factor.factor_id)}</h4>
+                    <Badge variant={factor.confidence === "HIGH" ? "warning" : "neutral"} size="sm">
+                      {factor.confidence === "HIGH" ? "Noticeable Support" : "Moderate Support"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">{factor.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* EVIDENCE TABLE */}
+      {data.evidence.length > 0 && (
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              SUPPORTING EVIDENCE
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-3">Metric Pattern</th>
+                    <th className="py-2.5 px-3">Previous Window</th>
+                    <th className="py-2.5 px-3">Investigated Window</th>
+                    <th className="py-2.5 px-3">Change</th>
+                    <th className="py-2.5 px-3">Relative Shift</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {data.evidence.map((ev, idx) => {
+                    const isRating = ev.signal.includes("rating");
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50/70">
+                        <td className="py-2.5 px-3 font-medium text-slate-800">{getHumanReadableSignal(ev.signal, ev.target_entity)}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-600">{isRating ? `${ev.before_value.toFixed(2)} ★` : Math.round(ev.before_value).toLocaleString()}</td>
+                        <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">{isRating ? `${ev.after_value.toFixed(2)} ★` : Math.round(ev.after_value).toLocaleString()}</td>
+                        <td className={`py-2.5 px-3 font-mono font-semibold ${ev.change < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {ev.change > 0 ? "+" : ""}{isRating ? ev.change.toFixed(2) : Math.round(ev.change).toLocaleString()}{isRating ? " ★" : ""}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-600">{ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
+  const details = data.complaint_details;
+  if (!details) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* WHAT WERE STUDENTS COMPLAINING ABOUT? */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-base font-bold text-slate-900">
+                WHAT WERE STUDENTS COMPLAINING ABOUT?
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Breakdown of {data.data_window.target_sample_count} complaints logged by {details.unique_complainants} distinct students.
+              </p>
+            </div>
+            {details.top_theme_name && (
+              <Badge variant="warning" size="md">
+                Top Issue: {details.top_theme_name} ({details.top_theme_count} complaints)
+              </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-4">
+          {details.top_theme_name && (
+            <div className="p-3.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs text-amber-900">
+              <span className="font-bold">{details.top_theme_name}</span> was reported most often, making up{" "}
+              <span className="font-bold">{details.top_theme_count} complaints</span> ({details.top_theme_share_pct}% of all submissions).
+            </div>
+          )}
+
+          {/* Theme Table */}
+          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                <tr>
+                  <th className="py-2.5 px-3">Complaint Theme</th>
+                  <th className="py-2.5 px-3">Investigated Period</th>
+                  <th className="py-2.5 px-3">Baseline Period</th>
+                  <th className="py-2.5 px-3">Change</th>
+                  <th className="py-2.5 px-3">Share of Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {details.themes.map((th, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/70">
+                    <td className="py-2.5 px-3 font-semibold text-slate-900">{th.theme_name}</td>
+                    <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{th.count} complaints</td>
+                    <td className="py-2.5 px-3 font-mono text-slate-600">{th.baseline_count} complaints</td>
+                    <td className={`py-2.5 px-3 font-mono font-semibold ${th.change > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      {th.change > 0 ? "+" : ""}{th.change}
+                    </td>
+                    <td className="py-2.5 px-3 font-mono text-slate-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-rose-500 rounded-full" style={{ width: `${Math.min(th.share_pct, 100)}%` }} />
+                        </div>
+                        <span>{th.share_pct.toFixed(1)}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* WHEN DID COMPLAINTS INCREASE? (Activity Trend) */}
+      {details.daily_trend.length > 0 && (
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              COMPLAINT SUBMISSIONS OVER TIME
+            </CardTitle>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Daily volume of complaints logged during the investigated window.
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
+              {details.daily_trend.slice(-16).map((item, idx) => (
+                <div key={idx} className="p-2 rounded bg-slate-50 border border-slate-100 text-center">
+                  <span className="text-[10px] text-slate-500 block truncate">{formatHumanDate(item.date)}</span>
+                  <span className={`text-sm font-bold font-mono mt-0.5 block ${item.count >= 10 ? "text-rose-600" : "text-slate-800"}`}>
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* PATTERNS WORTH LOOKING INTO */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            PATTERNS WORTH LOOKING INTO
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Complaint-specific drivers and areas of reported student concern.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {data.possible_factors.length === 0 ? (
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+              <p className="text-sm font-semibold text-slate-800">Nothing clearly stood out.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Complaint volume was distributed without a single acute cluster.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.possible_factors.map((factor, idx) => (
+                <div key={idx} className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-900">{getHumanReadableFactor(factor.factor_id)}</h4>
+                    <Badge variant="warning" size="sm">Primary Driver</Badge>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">{factor.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* EVIDENCE TABLE */}
+      {data.evidence.length > 0 && (
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              SUPPORTING EVIDENCE
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-3">Complaint Pattern</th>
+                    <th className="py-2.5 px-3">Baseline Period</th>
+                    <th className="py-2.5 px-3">Investigated Period</th>
+                    <th className="py-2.5 px-3">Change</th>
+                    <th className="py-2.5 px-3">Relative Shift</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {data.evidence.map((ev, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/70">
+                      <td className="py-2.5 px-3 font-medium text-slate-800">{getHumanReadableSignal(ev.signal, ev.target_entity)}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">{Math.round(ev.before_value)} complaints</td>
+                      <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">{Math.round(ev.after_value)} complaints</td>
+                      <td className={`py-2.5 px-3 font-mono font-semibold ${ev.change > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                        {ev.change > 0 ? "+" : ""}{Math.round(ev.change)}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">{ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function PollParticipationView({ data }: { data: InvestigationResponse }) {
+  const details = data.poll_details;
+  if (!details) return null;
+
+  return (
+    <div className="space-y-6">
+      {/* 4-Stat Overview Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">Total Votes</span>
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{data.data_window.target_sample_count.toLocaleString()}</p>
+          <span className="text-xs text-slate-500 mt-0.5 block">vs {data.data_window.comparison_sample_count.toLocaleString()} baseline</span>
+        </div>
+        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">Unique Voters</span>
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{details.unique_voters} students</p>
+          <span className="text-xs text-slate-500 mt-0.5 block">vs {details.comparison_unique_voters} in baseline</span>
+        </div>
+        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">Polls Conducted</span>
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{details.total_polls} polls</p>
+          <span className="text-xs text-slate-500 mt-0.5 block">1 poll scheduled per day</span>
+        </div>
+        <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">Average Turnout</span>
+          <p className="text-xl font-bold text-slate-900 mt-1 font-mono">{details.average_votes_per_poll.toFixed(1)} votes/poll</p>
+          <span className="text-xs text-slate-500 mt-0.5 block">vs {details.comparison_average_votes_per_poll.toFixed(1)} baseline</span>
+        </div>
+      </div>
+
+      {/* WHAT DID STUDENTS CHOOSE? (Active Polls) */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            WHAT DID STUDENTS CHOOSE?
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Student preference distributions across daily dining menu polls.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {details.most_active_polls.map((poll) => (
+            <div key={poll.poll_id} className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800">{formatHumanDate(poll.poll_date)}</span>
+                <span className="text-xs font-mono text-slate-500">{poll.total_votes} votes</span>
+              </div>
+              <div className="space-y-2">
+                {poll.options.map((opt, oIdx) => (
+                  <div key={oIdx} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className={`truncate ${opt.food_name === poll.winning_option ? "font-bold text-slate-900" : "text-slate-600"}`}>
+                        {opt.food_name} {opt.food_name === poll.winning_option ? "🏆" : ""}
+                      </span>
+                      <span className="font-mono text-slate-700 ml-2">{opt.share_pct.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${opt.food_name === poll.winning_option ? "bg-blue-600" : "bg-slate-400"}`}
+                        style={{ width: `${opt.share_pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* MOST CHOSEN MENU PREFERENCES ACROSS ALL POLLS */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            TOP VOTED MENU PREFERENCES
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Dishes that received the highest total student vote count across all polls in this window.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {details.top_chosen_options.map((opt, idx) => (
+              <div key={idx} className="p-3 rounded-lg bg-slate-50 border border-slate-100 text-center">
+                <span className="text-xs font-bold text-slate-900 block truncate">{opt.food_name}</span>
+                <span className="text-base font-bold font-mono text-blue-600 mt-1 block">{opt.total_votes} votes</span>
+                <span className="text-[11px] text-slate-500 block">in {opt.polls_featured} polls</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* PATTERNS WORTH LOOKING INTO */}
+      <Card className="border border-slate-200">
+        <CardHeader className="pb-3 border-b border-slate-100">
+          <CardTitle className="text-base font-bold text-slate-900">
+            PATTERNS WORTH LOOKING INTO
+          </CardTitle>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Student participation trends and engagement stability.
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4">
+          {data.possible_factors.length === 0 ? (
+            <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
+              <p className="text-sm font-semibold text-slate-800">Participation was consistent.</p>
+              <p className="text-xs text-slate-500">
+                Poll turnout remained within normal historical variance ({data.metric_summary.percent_change > 0 ? "+" : ""}{data.metric_summary.percent_change.toFixed(1)}%), with {details.unique_voters} distinct students voting across {details.total_polls} daily polls.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {data.possible_factors.map((factor, idx) => (
+                <div key={idx} className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-bold text-slate-900">{getHumanReadableFactor(factor.factor_id)}</h4>
+                    <Badge variant="warning" size="sm">Noticeable Shift</Badge>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed">{factor.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* EVIDENCE TABLE */}
+      {data.evidence.length > 0 && (
+        <Card className="border border-slate-200">
+          <CardHeader className="pb-3 border-b border-slate-100">
+            <CardTitle className="text-base font-bold text-slate-900">
+              SUPPORTING EVIDENCE
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
+                  <tr>
+                    <th className="py-2.5 px-3">Participation Metric</th>
+                    <th className="py-2.5 px-3">Baseline Period</th>
+                    <th className="py-2.5 px-3">Investigated Period</th>
+                    <th className="py-2.5 px-3">Change</th>
+                    <th className="py-2.5 px-3">Relative Shift</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {data.evidence.map((ev, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/70">
+                      <td className="py-2.5 px-3 font-medium text-slate-800">{getHumanReadableSignal(ev.signal, ev.target_entity)}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">{ev.before_value.toFixed(1)}</td>
+                      <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">{ev.after_value.toFixed(1)}</td>
+                      <td className={`py-2.5 px-3 font-mono font-semibold ${ev.change < 0 ? "text-slate-800" : "text-emerald-600"}`}>
+                        {ev.change > 0 ? "+" : ""}{ev.change.toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">{ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 }
 
 export default function AdminIntelligencePage() {
@@ -482,20 +1176,21 @@ export default function AdminIntelligencePage() {
       </div>
 
       {/* ========================================================================= */}
-      {/* SECTION 1: ROOT CAUSE ENGINE (WHY?) */}
+      {/* ========================================================================= */}
+      {/* SECTION 1: ROOT CAUSE (WHY DID THIS CHANGE?) */}
       {/* ========================================================================= */}
       {activeTab === "root_cause" && (
         <div className="space-y-6">
           {/* Header */}
           <div className="space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Food Satisfaction
+              WHY?
             </span>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Why did the metric change?
+              Why did this change?
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Investigate shifts in student dining feedback by comparing any selected period against historical baseline data.
+              Compare dining feedback across two time periods to understand what happened.
             </p>
           </div>
 
@@ -506,7 +1201,7 @@ export default function AdminIntelligencePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Target Metric
+                      Metric
                     </label>
                     <select
                       value={rcMetric}
@@ -515,6 +1210,7 @@ export default function AdminIntelligencePage() {
                     >
                       <option value="food_satisfaction">Food Satisfaction</option>
                       <option value="complaint_volume">Complaint Volume</option>
+                      <option value="poll_participation">Poll Participation</option>
                     </select>
                   </div>
 
@@ -555,7 +1251,7 @@ export default function AdminIntelligencePage() {
                   </div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Choose the period you want to investigate.
+                  Choose the metric and date range you want to compare.
                 </p>
               </form>
             </CardContent>
@@ -573,7 +1269,7 @@ export default function AdminIntelligencePage() {
           {/* Results Area */}
           {rcData && (
             <div className="space-y-6">
-              {/* SECTION: WHAT CHANGED? */}
+              {/* 1. WHAT CHANGED? */}
               <Card className="border border-slate-200">
                 <CardHeader className="pb-3 border-b border-slate-100">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -586,332 +1282,116 @@ export default function AdminIntelligencePage() {
                       </p>
                     </div>
 
-                    {rcData.metric_summary.statistically_significant ? (
-                      <Badge variant="danger" size="md">
-                        Significant change detected
-                      </Badge>
-                    ) : (
-                      <Badge variant="neutral" size="md">
-                        No significant change detected
-                      </Badge>
-                    )}
+                    <Badge
+                      variant={rcData.metric_summary.statistically_significant ? "warning" : "neutral"}
+                      size="md"
+                    >
+                      {rcData.metric_summary.statistically_significant
+                        ? (rcData.metric_summary.metric === "complaint_volume"
+                            ? (rcData.metric_summary.change > 0 ? "Noticeable increase in complaints" : "Noticeable reduction in complaints")
+                            : rcData.metric_summary.change < 0
+                            ? "Noticeable drop"
+                            : "Noticeable increase")
+                        : "About the same as before"}
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Previous Period */}
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
                         Previous Period
                       </span>
-                      <p className="text-xl font-bold text-slate-900 mt-1">
-                        {rcData.metric_summary.previous_value.toFixed(2)} ★
+                      <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+                        {formatMetricValue(rcData.metric_summary.previous_value, rcData.metric_summary.metric)}
                       </p>
                       <span className="text-xs text-slate-500 mt-0.5 block">
                         {rcData.data_window.comparison_start_date
-                          ? `${rcData.data_window.comparison_start_date} to ${rcData.data_window.comparison_end_date}`
+                          ? `${formatHumanDate(rcData.data_window.comparison_start_date)} to ${formatHumanDate(rcData.data_window.comparison_end_date)}`
                           : "Prior reference window"}
                       </span>
                     </div>
 
+                    {/* Investigated Period */}
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
                         Investigated Period
                       </span>
-                      <p className="text-xl font-bold text-slate-900 mt-1">
-                        {rcData.metric_summary.current_value.toFixed(2)} ★
+                      <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+                        {formatMetricValue(rcData.metric_summary.current_value, rcData.metric_summary.metric)}
                       </p>
                       <span className="text-xs text-slate-500 mt-0.5 block">
-                        {rcData.data_window.target_start_date} to {rcData.data_window.target_end_date}
+                        {formatHumanDate(rcData.data_window.target_start_date)} to {formatHumanDate(rcData.data_window.target_end_date)}
                       </span>
                     </div>
 
+                    {/* Change */}
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
                         Change
                       </span>
-                      <p className={`text-xl font-bold mt-1 ${
+                      <p className={`text-xl font-bold mt-1 font-mono ${
                         rcData.metric_summary.statistically_significant
-                          ? (rcData.metric_summary.change < 0 ? "text-rose-600" : "text-emerald-600")
+                          ? (rcData.metric_summary.metric === "complaint_volume"
+                              ? (rcData.metric_summary.change > 0 ? "text-rose-600" : "text-emerald-600")
+                              : (rcData.metric_summary.change < 0 ? "text-rose-600" : "text-emerald-600"))
                           : "text-slate-800"
                       }`}>
-                        {rcData.metric_summary.change < 0 ? "↓" : rcData.metric_summary.change > 0 ? "↑" : ""}{" "}
-                        {Math.abs(rcData.metric_summary.change).toFixed(2)}{" "}
-                        <span className="text-xs font-semibold text-slate-500 ml-1">
-                          ({rcData.metric_summary.percent_change < 0 ? "↓" : rcData.metric_summary.percent_change > 0 ? "↑" : ""}{" "}
-                          {Math.abs(rcData.metric_summary.percent_change).toFixed(1)}%)
+                        {rcData.metric_summary.change > 0 ? "+" : ""}
+                        {rcData.metric_summary.metric === "food_satisfaction"
+                          ? rcData.metric_summary.change.toFixed(2)
+                          : Math.round(rcData.metric_summary.change).toLocaleString()}
+                        {rcData.metric_summary.metric === "food_satisfaction" ? " ★" : ""}{" "}
+                        <span className="text-xs font-semibold text-slate-500 ml-1 font-sans">
+                          ({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)
                         </span>
                       </p>
                       <span className="text-xs text-slate-500 mt-0.5 block">
-                        {rcData.metric_summary.statistically_significant ? "Confirmed shift" : "Within normal variation"}
+                        {rcData.metric_summary.statistically_significant ? "Confirmed shift" : "About the same as before"}
                       </span>
                     </div>
 
+                    {/* Count */}
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Review Count
+                        {rcData.metric_summary.metric === "food_satisfaction"
+                          ? "Review Activity"
+                          : rcData.metric_summary.metric === "complaint_volume"
+                          ? "Complaint Submissions"
+                          : "Poll Turnout"}
                       </span>
-                      <p className="text-xl font-bold text-slate-900 mt-1">
-                        {rcData.data_window.target_sample_count} reviews
+                      <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
+                        {getMetricSampleLabel(rcData.metric_summary.metric, rcData.data_window.target_sample_count)}
                       </p>
                       <span className="text-xs text-slate-500 mt-0.5 block">
-                        compared to {rcData.data_window.comparison_sample_count} reviews
+                        {rcData.food_details?.unique_students
+                          ? `from ${rcData.food_details.unique_students} distinct students`
+                          : rcData.complaint_details?.unique_complainants
+                          ? `from ${rcData.complaint_details.unique_complainants} distinct students`
+                          : rcData.poll_details?.unique_voters
+                          ? `from ${rcData.poll_details.unique_voters} participating students`
+                          : `vs ${getMetricSampleLabel(rcData.metric_summary.metric, rcData.data_window.comparison_sample_count)} baseline`}
                       </span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* SECTION: WHAT DOES THE DATA SHOW? */}
-              <Card className="border border-slate-200">
-                <CardHeader className="pb-3 border-b border-slate-100">
-                  <CardTitle className="text-base font-bold text-slate-900">
-                    WHAT DOES THE DATA SHOW?
-                  </CardTitle>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Factual signals and observations recorded during the investigated window.
-                  </p>
-                </CardHeader>
-                <CardContent className="pt-4 space-y-4">
-                  {/* Strongest Factual Signal Cards (2-4 cards) */}
-                  {rcData.evidence.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {rcData.evidence.slice(0, 3).map((ev, idx) => {
-                        const label = getHumanReadableSignal(ev.signal, ev.target_entity);
+              {/* Metric-Specific Analytical Content */}
+              {rcData.metric_summary.metric === "food_satisfaction" && (
+                <FoodSatisfactionView data={rcData} />
+              )}
 
-                        return (
-                          <div
-                            key={idx}
-                            className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-1.5 shadow-2xs"
-                          >
-                            <span className="text-xs font-semibold text-slate-700 block truncate">
-                              {label}
-                            </span>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-base font-bold font-mono text-slate-900">
-                                {ev.before_value.toFixed(1)} → {ev.after_value.toFixed(1)}
-                              </span>
-                              <span className={`text-xs font-semibold font-mono ${
-                                ev.relative_change_pct < 0 ? "text-rose-600" : "text-slate-700"
-                              }`}>
-                                ({ev.relative_change_pct > 0 ? "↑" : ev.relative_change_pct < 0 ? "↓" : ""}{" "}
-                                {Math.abs(ev.relative_change_pct).toFixed(1)}%)
-                              </span>
-                            </div>
-                            {ev.details && (
-                              <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
-                                {ev.details}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+              {rcData.metric_summary.metric === "complaint_volume" && (
+                <ComplaintVolumeView data={rcData} />
+              )}
 
-                  {/* Direct observations bullet list */}
-                  {rcData.observations.length > 0 && (
-                    <div className="pt-2">
-                      <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider block mb-2">
-                        Direct Observations
-                      </span>
-                      <ul className="space-y-1.5 text-xs text-slate-700">
-                        {rcData.observations.map((obs, idx) => (
-                          <li key={idx} className="flex items-start gap-2">
-                            <span className="text-slate-400 font-bold leading-relaxed">•</span>
-                            <span className="leading-relaxed">{obs}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {rcData.metric_summary.metric === "poll_participation" && (
+                <PollParticipationView data={rcData} />
+              )}
 
-              {/* SECTION: POSSIBLE CONTRIBUTING FACTORS */}
-              <Card className="border border-slate-200">
-                <CardHeader className="pb-3 border-b border-slate-100">
-                  <CardTitle className="text-base font-bold text-slate-900">
-                    POSSIBLE CONTRIBUTING FACTORS
-                  </CardTitle>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Factors identified by matching review patterns, menu repetition, and meal services.
-                  </p>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {rcData.possible_factors.length === 0 ? (
-                    /* NO FACTOR STATE */
-                    <div className="p-5 rounded-lg bg-slate-50 border border-slate-200 flex items-start gap-3">
-                      <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs shrink-0 mt-0.5">
-                        ✓
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                          NO STRONG CONTRIBUTING FACTOR FOUND
-                        </h4>
-                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                          {rcData.metric_summary.statistically_significant
-                            ? `The metric changed by ${Math.abs(rcData.metric_summary.change).toFixed(2)}, but no single factor showed sufficient evidence to cross ranking thresholds.`
-                            : "Rating fluctuations remained within normal day-to-day variance. No individual factor showed sufficient evidence."}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    /* LIST OF FACTORS */
-                    <div className="space-y-4">
-                      {rcData.possible_factors.map((factor, idx) => {
-                        const supportingEvidence = factor.supporting_evidence_indices
-                          ?.map((eIdx) => rcData.evidence[eIdx])
-                          .filter(Boolean) || [];
-                        const factorName = getHumanReadableFactor(factor.factor_id);
-                        const tierLabel = factor.confidence === "HIGH"
-                          ? "High Evidence"
-                          : factor.confidence === "MEDIUM"
-                          ? "Medium Evidence"
-                          : "Low Evidence";
-                        const tierVariant = factor.confidence === "HIGH"
-                          ? "danger"
-                          : factor.confidence === "MEDIUM"
-                          ? "warning"
-                          : "neutral";
-
-                        return (
-                          <div
-                            key={idx}
-                            className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-3"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-bold text-slate-900">
-                                  {factorName}
-                                </h4>
-                              </div>
-                              <div className="flex items-center gap-2.5">
-                                <Badge variant={tierVariant} size="sm">
-                                  {tierLabel}
-                                </Badge>
-                                <span className="text-xs text-slate-500 font-medium">
-                                  {Math.round(factor.confidence_score * 100)}% confidence score
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="text-xs text-slate-700 leading-relaxed">
-                              {factor.description}
-                            </p>
-
-                            {/* Supporting signals */}
-                            {supportingEvidence.length > 0 && (
-                              <div className="pt-2 border-t border-slate-200/80">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 block mb-1.5">
-                                  Supporting Signals:
-                                </span>
-                                <ul className="space-y-1 text-xs text-slate-700">
-                                  {supportingEvidence.map((ev, sIdx) => {
-                                    const signalName = getHumanReadableSignal(ev.signal, ev.target_entity);
-                                    return (
-                                      <li key={sIdx} className="flex items-start gap-2">
-                                        <span className="text-slate-400 font-bold">•</span>
-                                        <span>
-                                          {ev.details || `${signalName}: shifted from ${ev.before_value.toFixed(1)} to ${ev.after_value.toFixed(1)}.`}
-                                        </span>
-                                      </li>
-                                    );
-                                  })}
-                                </ul>
-                              </div>
-                            )}
-
-                            {/* Section: Why was this flagged? */}
-                            <div className="pt-2 border-t border-slate-200/80">
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 block mb-1">
-                                Why was this flagged?
-                              </span>
-                              <p className="text-xs text-slate-600 leading-relaxed">
-                                The engine checks for recurring patterns across review text, meal types, and menu items. These signals occurred together in the selected comparison period and contributed to the factor&apos;s evidence score.
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* SECTION: EVIDENCE (Clean data table) */}
-              <Card className="border border-slate-200">
-                <CardHeader className="pb-3 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-base font-bold text-slate-900">
-                        EVIDENCE
-                      </CardTitle>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Quantitative metrics evaluated during the investigation.
-                      </p>
-                    </div>
-                    <span className="text-xs text-slate-500">
-                      {rcData.evidence.length} signal{rcData.evidence.length === 1 ? "" : "s"} evaluated
-                    </span>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-4">
-                  {rcData.evidence.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic py-4 text-center">
-                      No additional empirical signals met the evaluation threshold.
-                    </p>
-                  ) : (
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
-                          <tr>
-                            <th className="py-2.5 px-3">Signal</th>
-                            <th className="py-2.5 px-3">Previous Period</th>
-                            <th className="py-2.5 px-3">Current Period</th>
-                            <th className="py-2.5 px-3">Change</th>
-                            <th className="py-2.5 px-3">Relative Change</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs">
-                          {rcData.evidence.map((ev, idx) => {
-                            const readableName = getHumanReadableSignal(ev.signal, ev.target_entity);
-                            return (
-                              <tr key={idx} className="hover:bg-slate-50/70">
-                                <td className="py-2.5 px-3">
-                                  <span className="font-semibold text-slate-800 block">
-                                    {readableName}
-                                  </span>
-                                  <span className="font-mono text-[10px] text-slate-400 block">
-                                    {ev.signal}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-3 text-slate-600 font-mono">
-                                  {ev.before_value.toFixed(2)}
-                                </td>
-                                <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">
-                                  {ev.after_value.toFixed(2)}
-                                </td>
-                                <td className={`py-2.5 px-3 font-semibold font-mono ${
-                                  rcData.metric_summary.statistically_significant && ev.change < 0
-                                    ? "text-rose-600"
-                                    : "text-slate-800"
-                                }`}>
-                                  {ev.change > 0 ? "+" : ""}{ev.change.toFixed(2)}
-                                </td>
-                                <td className="py-2.5 px-3 text-slate-600 font-mono">
-                                  {ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* CAUSALITY NOTE (AT BOTTOM) */}
+              {/* Note: non-causal reminder */}
               <p className="text-xs text-slate-500 text-center pt-2">
                 Note: These patterns show associations in historical data. They do not prove that a factor caused the observed change.
               </p>
@@ -1667,47 +2147,20 @@ export default function AdminIntelligencePage() {
               {/* 1. WHAT COULD HAPPEN? */}
               <Card className="border border-slate-200">
                 <CardHeader className="pb-3 border-b border-slate-100">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                    <div>
-                      <CardTitle className="text-base font-bold text-slate-900">
-                        WHAT COULD HAPPEN?
-                      </CardTitle>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Estimated comparison between current menu and the simulated change.
-                      </p>
-                    </div>
-                    {simData.outcomes?.[0]?.risk_level && (
-                      <div className="flex items-center gap-1.5 self-start sm:self-auto">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                          Simulation Risk:
-                        </span>
-                        <Badge
-                          variant={
-                            simData.outcomes[0].risk_level === "HIGH"
-                              ? "warning"
-                              : simData.outcomes[0].risk_level === "MODERATE"
-                              ? "warning"
-                              : "success"
-                          }
-                          className="text-[11px]"
-                        >
-                          {simData.outcomes[0].risk_level === "HIGH"
-                            ? "Higher Uncertainty"
-                            : simData.outcomes[0].risk_level === "MODERATE"
-                            ? "Moderate"
-                            : "Low"}
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
+                  <CardTitle className="text-base font-bold text-slate-900">
+                    WHAT COULD HAPPEN?
+                  </CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Model estimates for the current and proposed dish, and the average shift across simulation runs.
+                  </p>
                 </CardHeader>
                 <CardContent className="pt-5 space-y-4">
-                  {/* 3-Part Comparison: Current -> Simulated -> Expected Difference */}
+                  {/* 3-Part Comparison: Current -> Simulated -> Average Simulated Shift */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Current State */}
                     <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Current Menu
+                        Current Model Estimate
                       </span>
                       <p className="text-sm font-semibold text-slate-800 truncate">
                         {simBaselineFood}
@@ -1718,14 +2171,14 @@ export default function AdminIntelligencePage() {
                         </span>
                       </div>
                       <span className="text-[11px] text-slate-500 block pt-0.5">
-                        Current model baseline estimate
+                        Raw model estimate for the current dish
                       </span>
                     </div>
 
                     {/* Simulated State */}
                     <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 block">
-                        Simulated Change
+                        Simulated Model Estimate
                       </span>
                       <p className="text-sm font-semibold text-blue-950 truncate">
                         {simType === "FOOD_REPLACEMENT"
@@ -1740,14 +2193,14 @@ export default function AdminIntelligencePage() {
                         </span>
                       </div>
                       <span className="text-[11px] text-blue-800 block pt-0.5">
-                        Simulated scenario estimate
+                        Raw model estimate for the proposed dish
                       </span>
                     </div>
 
-                    {/* Expected Difference */}
+                    {/* Average Simulated Shift */}
                     <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Expected Difference
+                        Average Simulated Shift
                       </span>
                       <p className="text-sm font-semibold text-slate-700">
                         Estimated shift
@@ -1772,37 +2225,27 @@ export default function AdminIntelligencePage() {
                         )}
                       </div>
                       <span className="text-[11px] text-slate-500 block pt-0.5">
-                        Estimated difference between scenario and current
+                        Average difference across {simData.distribution.runs.toLocaleString()} paired simulation runs
                       </span>
                     </div>
                   </div>
 
-                  {/* Plain-English explanation */}
-                  <p className="text-xs text-slate-600 leading-relaxed pt-1">
-                    Under the simulation assumptions, the proposed change produces an estimated difference of{" "}
-                    <strong className="text-slate-800 font-semibold font-mono">
-                      {simData.delta.mean_delta > 0 ? "+" : ""}
-                      {simData.delta.mean_delta.toFixed(2)} ★
-                    </strong>{" "}
-                    compared with the current menu baseline.
+                  {/* Helper note — arithmetic distinction */}
+                  <p className="text-[11px] text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
+                    The model estimates each dish directly, while the shift is calculated from paired simulation runs. These values therefore do not necessarily subtract exactly.
                   </p>
 
-                  {simData.outcomes?.[0]?.risk_level && (
-                    <p className="text-[11px] text-slate-500">
-                      Simulation risk reflects the simulated downside/uncertainty under the model&apos;s assumptions.
-                    </p>
-                  )}
                 </CardContent>
               </Card>
 
-              {/* 2. POSSIBLE OUTCOMES */}
+              {/* 2. POSSIBLE SIMULATED OUTCOMES */}
               <Card className="border border-slate-200">
                 <CardHeader className="pb-3 border-b border-slate-100">
                   <CardTitle className="text-base font-bold text-slate-900">
-                    POSSIBLE OUTCOMES
+                    POSSIBLE SIMULATED OUTCOMES
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    The simulation was repeated across {simData.distribution.runs.toLocaleString()} plausible historical conditions to show how the result can vary.
+                    The simulation was repeated across {simData.distribution.runs.toLocaleString()} historical conditions to show how the scenario result can vary.
                   </p>
                 </CardHeader>
                 <CardContent className="pt-5 space-y-5">
@@ -1828,7 +2271,7 @@ export default function AdminIntelligencePage() {
                         {simData.distribution.p50.toFixed(2)} ★
                       </p>
                       <span className="text-[11px] text-blue-800 mt-0.5 block">
-                        P50 — middle of the simulated distribution
+                        P50 — median of the simulated distribution
                       </span>
                     </div>
 
@@ -1848,7 +2291,7 @@ export default function AdminIntelligencePage() {
                   {/* Visual Distribution Track: P10 ───── P25 ───── P50 ───── P75 ───── P90 */}
                   <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
-                      <span>Simulated Outcome Range</span>
+                      <span>Simulated P10–P90 Range</span>
                       <span className="font-mono text-slate-800 font-semibold">
                         {simData.distribution.p10.toFixed(2)} ★ — {simData.distribution.p90.toFixed(2)} ★
                       </span>
@@ -1870,7 +2313,7 @@ export default function AdminIntelligencePage() {
                           </div>
                         )}
                         <div className="text-center">
-                          <span className="text-[10px] font-bold text-blue-700 block">P50 (Median)</span>
+                          <span className="text-[10px] font-bold text-blue-700 block">P50</span>
                           <span className="font-bold text-blue-900 text-sm">{simData.distribution.p50.toFixed(2)}</span>
                         </div>
                         {simData.distribution.p75 != null && (
@@ -1889,26 +2332,63 @@ export default function AdminIntelligencePage() {
                 </CardContent>
               </Card>
 
-              {/* 3. WHAT DOES THIS MEAN? */}
+              {/* 3. SIMULATION UNCERTAINTY */}
+              <div className="p-4 rounded-lg bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold uppercase tracking-wider text-slate-800 block">
+                    SIMULATION UNCERTAINTY
+                  </span>
+                  <Badge
+                    variant={
+                      simData.outcomes?.[0]?.risk_level === "HIGH"
+                        ? "warning"
+                        : simData.outcomes?.[0]?.risk_level === "MODERATE"
+                        ? "warning"
+                        : "success"
+                    }
+                    size="sm"
+                  >
+                    {simData.outcomes?.[0]?.risk_level === "HIGH"
+                      ? "Higher"
+                      : simData.outcomes?.[0]?.risk_level === "MODERATE"
+                      ? "Moderate"
+                      : "Low"}
+                  </Badge>
+                </div>
+                <p className="text-slate-700 leading-relaxed">
+                  The simulated outcome varies considerably across runs.
+                </p>
+                {simData.confidence === "LOW" && (
+                  <p className="text-slate-600 leading-relaxed">
+                    Limited historical data for the proposed dish contributes to higher uncertainty.
+                  </p>
+                )}
+              </div>
+
+              {/* 4. WHAT DOES THIS MEAN? */}
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2 text-xs">
                 <span className="font-bold uppercase tracking-wider text-slate-800 block">
                   WHAT DOES THIS MEAN?
                 </span>
                 <p className="text-slate-700 leading-relaxed">
-                  Under the simulation assumptions, {simType === "FOOD_REPLACEMENT" ? `replacing ${simBaselineFood} with ${simScenarioFood}` : "applying the proposed menu change"} produces an estimated{" "}
+                  The model&apos;s point estimates are{" "}
+                  {simData.delta.mean_delta > 0.05
+                    ? "slightly higher"
+                    : simData.delta.mean_delta < -0.05
+                    ? "lower"
+                    : "similar"}{" "}
+                  for the proposed dish, while the average simulated shift is{" "}
                   <strong className="text-slate-900 font-semibold font-mono">
-                    {simData.delta.mean_delta > 0.05
-                      ? `positive shift (+${simData.delta.mean_delta.toFixed(2)} ★)`
-                      : simData.delta.mean_delta < -0.05
-                      ? `negative shift (${simData.delta.mean_delta.toFixed(2)} ★)`
-                      : `minimal difference (${simData.delta.mean_delta.toFixed(2)} ★)`}
-                  </strong>{" "}
-                  in the central simulated outcome. The simulated outcomes vary across the tested historical conditions.
+                    {simData.delta.mean_delta > 0 ? "+" : ""}
+                    {simData.delta.mean_delta.toFixed(2)} ★
+                  </strong>
+                  . The simulation also shows substantial variation across possible outcomes.
                 </p>
                 <p className="text-slate-500 leading-relaxed pt-0.5">
-                  This is a scenario estimate, not a prediction of what will definitely happen.
+                  This is a scenario estimate, not a guarantee of what will happen in practice.
                 </p>
               </div>
+
 
               {/* 4. ABOUT THIS SIMULATION */}
               <details className="border border-slate-200 rounded-lg p-3 bg-white text-xs text-slate-600 group">
@@ -1961,7 +2441,7 @@ export default function AdminIntelligencePage() {
                       <tr>
                         <th className="py-2.5 px-3">Scenario</th>
                         <th className="py-2.5 px-3">Projected Change</th>
-                        <th className="py-2.5 px-3">Simulation Risk</th>
+                        <th className="py-2.5 px-3">Uncertainty</th>
                         <th className="py-2.5 px-3">Date</th>
                       </tr>
                     </thead>
