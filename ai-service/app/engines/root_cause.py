@@ -299,6 +299,7 @@ class RootCauseEngine:
 
         # Check for stability
         if not is_significant and abs(diff) < 0.15:
+            observations.append("Overall satisfaction stayed about the same, although some meal and dish ratings moved during this period.")
             observations.append("Metric variation is within normal historical fluctuations; no statistically significant degradation detected.")
             return InvestigationResponse(
                 investigation_id=investigation_id,
@@ -361,6 +362,8 @@ class RootCauseEngine:
         oil_theme = theme_map.get("OIL_GREASINESS")
         if oil_theme and oil_theme["velocity_multiplier"] >= 2.0:
             oil_ev_idx = len(evidence_list)
+            is_oil_new = oil_theme["baseline_count"] == 0
+            oil_rel_pct = 0.0 if is_oil_new else round((oil_theme["velocity_multiplier"] - 1.0) * 100.0, 1)
             evidence_list.append(
                 EvidenceItem(
                     signal="complaint_theme_velocity_oil",
@@ -368,7 +371,7 @@ class RootCauseEngine:
                     before_value=float(oil_theme["baseline_count"]),
                     after_value=float(oil_theme["target_count"]),
                     change=float(oil_theme["count_change"]),
-                    relative_change_pct=round((oil_theme["velocity_multiplier"] - 1.0) * 100.0, 1),
+                    relative_change_pct=oil_rel_pct,
                     details=f"Oiliness/greasiness complaints increased to {oil_theme['target_count']} ({oil_theme['target_daily_rate']}/day) vs {oil_theme['baseline_count']} baseline ({oil_theme['baseline_daily_rate']}/day)."
                 )
             )
@@ -597,6 +600,28 @@ class RootCauseEngine:
             )
 
         theme_items.sort(key=lambda x: x.count, reverse=True)
+
+        # Reconcile: complaints classified as GENERAL by NLP are not in theme_results
+        # (aggregate_theme_trends discards GENERAL). Calculate remainder and append as unclassified row.
+        categorized_total = sum(item.count for item in theme_items)
+        unclassified_count = t_count - categorized_total
+        if unclassified_count > 0:
+            # Calculate baseline unclassified as well
+            baseline_categorized = sum(item.baseline_count for item in theme_items)
+            unclassified_baseline = b_count - baseline_categorized
+            unclassified_share = round((unclassified_count / t_count * 100.0), 1) if t_count > 0 else 0.0
+            theme_items.append(
+                ComplaintThemeItem(
+                    theme_id="UNCLASSIFIED",
+                    theme_name="Other / Unclassified",
+                    count=unclassified_count,
+                    baseline_count=max(unclassified_baseline, 0),
+                    change=unclassified_count - max(unclassified_baseline, 0),
+                    share_pct=unclassified_share,
+                    velocity_multiplier=1.0
+                )
+            )
+
         top_theme = theme_items[0] if (theme_items and theme_items[0].count > 0) else None
 
         # Daily trend
@@ -659,6 +684,9 @@ class RootCauseEngine:
 
         if top_theme and top_theme.count > 0:
             top_ev_idx = len(evidence_list)
+            is_new = top_theme.baseline_count == 0
+            rel_pct = 0.0 if is_new else round((top_theme.count - top_theme.baseline_count) / top_theme.baseline_count * 100.0, 1)
+            details_text = f"{top_theme.theme_name} accounted for {top_theme.count} complaints ({top_theme.share_pct}% share) (new this period)." if is_new else f"{top_theme.theme_name} accounted for {top_theme.count} complaints ({top_theme.share_pct}% share) compared to {top_theme.baseline_count} in baseline."
             evidence_list.append(
                 EvidenceItem(
                     signal=f"complaint_theme_concentration_{top_theme.theme_id.lower()}",
@@ -666,13 +694,16 @@ class RootCauseEngine:
                     before_value=float(top_theme.baseline_count),
                     after_value=float(top_theme.count),
                     change=float(top_theme.change),
-                    relative_change_pct=round((top_theme.count - top_theme.baseline_count) / max(top_theme.baseline_count, 1) * 100.0, 1),
-                    details=f"{top_theme.theme_name} accounted for {top_theme.count} complaints ({top_theme.share_pct}% share) compared to {top_theme.baseline_count} in baseline."
+                    relative_change_pct=rel_pct,
+                    details=details_text
                 )
             )
 
             for th in theme_items[1:]:
                 if th.count >= 15 and th.velocity_multiplier >= 1.5:
+                    th_is_new = th.baseline_count == 0
+                    th_rel_pct = 0.0 if th_is_new else round((th.count - th.baseline_count) / th.baseline_count * 100.0, 1)
+                    th_details = f"{th.theme_name} rose to {th.count} complaints ({th.share_pct}% share) (new this period)." if th_is_new else f"{th.theme_name} rose to {th.count} complaints ({th.share_pct}% share) vs {th.baseline_count} baseline."
                     evidence_list.append(
                         EvidenceItem(
                             signal=f"complaint_theme_spike_{th.theme_id.lower()}",
@@ -680,8 +711,8 @@ class RootCauseEngine:
                             before_value=float(th.baseline_count),
                             after_value=float(th.count),
                             change=float(th.change),
-                            relative_change_pct=round((th.count - th.baseline_count) / max(th.baseline_count, 1) * 100.0, 1),
-                            details=f"{th.theme_name} rose to {th.count} complaints ({th.share_pct}% share) vs {th.baseline_count} baseline."
+                            relative_change_pct=th_rel_pct,
+                            details=th_details
                         )
                     )
 

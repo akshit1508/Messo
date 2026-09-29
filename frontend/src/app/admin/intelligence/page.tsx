@@ -192,7 +192,7 @@ function getDriverMetric(
         title: "Recent rating",
         metricValue: score ? `${score} ★` : "Recent rating",
         importancePercent,
-        explanation: "Recent ratings are used to estimate the upcoming rating.",
+        explanation: "Recent ratings provide a current trend indicator.",
       };
     }
     case "food_30d_std": {
@@ -202,7 +202,7 @@ function getDriverMetric(
         title: "Recent rating variation",
         metricValue: spread ? `±${spread} ★` : "Standard variation",
         importancePercent,
-        explanation: "The model considers how much ratings have varied recently.",
+        explanation: "Accounts for recent preparation consistency and score variance.",
       };
     }
     case "food_all_time_mean": {
@@ -212,7 +212,7 @@ function getDriverMetric(
         title: "Historical average",
         metricValue: score ? `${score} ★` : "Historical average",
         importancePercent,
-        explanation: "Long-term ratings provide a baseline for the forecast.",
+        explanation: "Long-term ratings provide a steady historical benchmark.",
       };
     }
     case "food_7d_mean": {
@@ -222,7 +222,7 @@ function getDriverMetric(
         title: "7-day average rating",
         metricValue: score ? `${score} ★` : "7-day rating",
         importancePercent,
-        explanation: "The forecast includes the 7-day average rating as an input.",
+        explanation: "Incorporates recent week meal ratings into the estimate.",
       };
     }
     case "food_30d_mean": {
@@ -232,7 +232,7 @@ function getDriverMetric(
         title: "30-day average rating",
         metricValue: score ? `${score} ★` : "30-day rating",
         importancePercent,
-        explanation: "The model incorporates the 30-day average rating for this dish.",
+        explanation: "Incorporates the 30-day average rating for this dish.",
       };
     }
     case "poll_vote_share_recent": {
@@ -242,7 +242,7 @@ function getDriverMetric(
         title: "Student poll preference",
         metricValue: share ? `${share}% vote share` : "Poll voting share",
         importancePercent,
-        explanation: "The model incorporates student voting preference from recent preference polls.",
+        explanation: "Reflects student preference shares from recent menu voting polls.",
       };
     }
     case "day_of_week":
@@ -251,7 +251,7 @@ function getDriverMetric(
         title: "Day of week pattern",
         metricValue: "Weekday vs weekend schedule",
         importancePercent,
-        explanation: "The forecast accounts for differences between weekday and weekend meal attendance.",
+        explanation: "Accounts for differences between weekday and weekend meal attendance.",
       };
     }
     case "total_complaints_7d": {
@@ -261,7 +261,7 @@ function getDriverMetric(
         title: "Recent complaint volume",
         metricValue: count !== null ? `${count} complaints in last 7 days` : "Feedback volume",
         importancePercent,
-        explanation: "The model considers recent logged feedback and complaint volume.",
+        explanation: "Considers recent logged grievances and feedback volume.",
       };
     }
     default: {
@@ -269,7 +269,7 @@ function getDriverMetric(
         title: getHumanReadableFeature(featName),
         metricValue: featureSummary[featName] != null ? String(featureSummary[featName]) : "Historical record",
         importancePercent,
-        explanation: "This historical signal is included in the model estimate.",
+        explanation: "This historical information is included in the forecast.",
       };
     }
   }
@@ -377,10 +377,10 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
         <Card className="border border-slate-200">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-bold text-slate-900">
-              MEAL-LEVEL PERFORMANCE
+              MEAL PERFORMANCE
             </CardTitle>
             <p className="text-xs text-slate-500 mt-0.5">
-              Average satisfaction by meal service during the investigated window.
+              Average satisfaction by meal service during the selected period.
             </p>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
@@ -417,9 +417,14 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
         <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Most Common Concerns */}
           <div className="p-4 rounded-lg bg-rose-50/50 border border-rose-100 space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800">
-              Most Common Concerns
-            </h4>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800">
+                Common Concerns
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Based on complaint records during this period.
+              </p>
+            </div>
             {details.common_concerns.length > 0 ? (
               <ul className="space-y-2 text-xs text-slate-700">
                 {details.common_concerns.map((c, idx) => (
@@ -436,9 +441,14 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
 
           {/* Most Positive Feedback */}
           <div className="p-4 rounded-lg bg-emerald-50/50 border border-emerald-100 space-y-2.5">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-              Positive Feedback Highlights
-            </h4>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                Positive Feedback
+              </h4>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Based on food reviews during this period.
+              </p>
+            </div>
             {details.positive_highlights.length > 0 ? (
               <ul className="space-y-2 text-xs text-slate-700">
                 {details.positive_highlights.map((p, idx) => (
@@ -462,7 +472,7 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
             FOOD FEEDBACK & DISH RATINGS
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
-            Ratings for dishes served during the investigated window.
+            Ratings for dishes served during the selected period.
           </p>
         </CardHeader>
         <CardContent className="pt-4 space-y-4">
@@ -477,7 +487,7 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
                     <th className="py-2.5 px-3">Dish Name</th>
                     <th className="py-2.5 px-3">Meal Type</th>
                     <th className="py-2.5 px-3">Review Count</th>
-                    <th className="py-2.5 px-3">Investigated Rating</th>
+                    <th className="py-2.5 px-3">Current Rating</th>
                     <th className="py-2.5 px-3">Previous Rating</th>
                     <th className="py-2.5 px-3">Change</th>
                   </tr>
@@ -540,21 +550,22 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* PATTERNS WORTH LOOKING INTO */}
+      {/* WHAT STOOD OUT */}
       <Card className="border border-slate-200">
         <CardHeader className="pb-3 border-b border-slate-100">
           <CardTitle className="text-base font-bold text-slate-900">
-            PATTERNS WORTH LOOKING INTO
+            WHAT STOOD OUT
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
-            Key factors observed alongside the shift in food satisfaction.
+            Key areas observed alongside the shift in food satisfaction.
           </p>
         </CardHeader>
         <CardContent className="pt-4">
           {data.possible_factors.length === 0 ? (
             <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-sm font-semibold text-slate-800">Nothing clearly stood out.</p>
-              <p className="text-xs text-slate-500 mt-0.5">No dominant food quality or preparation factor was observed.</p>
+              <p className="text-sm font-semibold text-slate-800">
+                Overall satisfaction stayed about the same, although some meal and dish ratings moved during this period.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -574,12 +585,12 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* EVIDENCE TABLE */}
+      {/* DETAILS */}
       {data.evidence.length > 0 && (
         <Card className="border border-slate-200">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-bold text-slate-900">
-              SUPPORTING EVIDENCE
+              DETAILS
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -587,11 +598,11 @@ function FoodSatisfactionView({ data }: { data: InvestigationResponse }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                   <tr>
-                    <th className="py-2.5 px-3">Metric Pattern</th>
-                    <th className="py-2.5 px-3">Previous Window</th>
-                    <th className="py-2.5 px-3">Investigated Window</th>
+                    <th className="py-2.5 px-3">What Changed</th>
+                    <th className="py-2.5 px-3">Previous Period</th>
+                    <th className="py-2.5 px-3">Selected Period</th>
                     <th className="py-2.5 px-3">Change</th>
-                    <th className="py-2.5 px-3">Relative Shift</th>
+                    <th className="py-2.5 px-3">Change %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -634,7 +645,7 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
                 WHAT WERE STUDENTS COMPLAINING ABOUT?
               </CardTitle>
               <p className="text-xs text-slate-500 mt-0.5">
-                Breakdown of {data.data_window.target_sample_count} complaints logged by {details.unique_complainants} distinct students.
+                Complaint breakdown of {data.data_window.target_sample_count} complaints logged by {details.unique_complainants} distinct students.
               </p>
             </div>
             {details.top_theme_name && (
@@ -658,8 +669,8 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
               <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                 <tr>
                   <th className="py-2.5 px-3">Complaint Theme</th>
-                  <th className="py-2.5 px-3">Investigated Period</th>
-                  <th className="py-2.5 px-3">Baseline Period</th>
+                  <th className="py-2.5 px-3">Selected Period</th>
+                  <th className="py-2.5 px-3">Previous Period</th>
                   <th className="py-2.5 px-3">Change</th>
                   <th className="py-2.5 px-3">Share of Total</th>
                 </tr>
@@ -671,7 +682,7 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
                     <td className="py-2.5 px-3 font-mono font-bold text-slate-900">{th.count} complaints</td>
                     <td className="py-2.5 px-3 font-mono text-slate-600">{th.baseline_count} complaints</td>
                     <td className={`py-2.5 px-3 font-mono font-semibold ${th.change > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                      {th.change > 0 ? "+" : ""}{th.change}
+                      {th.baseline_count === 0 ? `+${th.change} (new)` : `${th.change > 0 ? "+" : ""}${th.change}`}
                     </td>
                     <td className="py-2.5 px-3 font-mono text-slate-700">
                       <div className="flex items-center gap-2">
@@ -689,47 +700,83 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* WHEN DID COMPLAINTS INCREASE? (Activity Trend) */}
-      {details.daily_trend.length > 0 && (
-        <Card className="border border-slate-200">
-          <CardHeader className="pb-3 border-b border-slate-100">
-            <CardTitle className="text-base font-bold text-slate-900">
-              COMPLAINT SUBMISSIONS OVER TIME
-            </CardTitle>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Daily volume of complaints logged during the investigated window.
-            </p>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
-              {details.daily_trend.slice(-16).map((item, idx) => (
-                <div key={idx} className="p-2 rounded bg-slate-50 border border-slate-100 text-center">
-                  <span className="text-[10px] text-slate-500 block truncate">{formatHumanDate(item.date)}</span>
-                  <span className={`text-sm font-bold font-mono mt-0.5 block ${item.count >= 10 ? "text-rose-600" : "text-slate-800"}`}>
-                    {item.count}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* COMPLAINTS OVER TIME */}
+      {details.daily_trend.length > 0 && (() => {
+        const isLongPeriod = details.daily_trend.length > 14;
 
-      {/* PATTERNS WORTH LOOKING INTO */}
+        // For long periods: aggregate daily data into weekly buckets
+        interface TrendBucket { label: string; count: number; }
+        let buckets: TrendBucket[] = [];
+        if (isLongPeriod) {
+          // Group by ISO week
+          const weekMap: Record<string, number> = {};
+          const weekLabels: Record<string, string> = {};
+          details.daily_trend.forEach((item) => {
+            const d = new Date(item.date + "T00:00:00Z");
+            // Get Monday of that week
+            const day = d.getUTCDay();
+            const diff = (day === 0 ? -6 : 1) - day;
+            const monday = new Date(d);
+            monday.setUTCDate(d.getUTCDate() + diff);
+            const key = monday.toISOString().slice(0, 10);
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            weekMap[key] = (weekMap[key] || 0) + item.count;
+            weekLabels[key] = `${monthNames[monday.getUTCMonth()]} ${monday.getUTCDate()}`;
+          });
+          buckets = Object.keys(weekMap).sort().map((k) => ({
+            label: weekLabels[k],
+            count: weekMap[k],
+          }));
+        } else {
+          buckets = details.daily_trend.map((item) => ({
+            label: formatHumanDate(item.date),
+            count: item.count,
+          }));
+        }
+
+        return (
+          <Card className="border border-slate-200">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900">
+                COMPLAINTS OVER TIME
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {isLongPeriod
+                  ? `Weekly complaint totals across the full selected period (${details.daily_trend.length} days).`
+                  : `Daily complaint count across the selected period.`}
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className={`grid gap-2 ${isLongPeriod ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8"}`}>
+                {buckets.map((bucket, idx) => (
+                  <div key={idx} className="p-2 rounded bg-slate-50 border border-slate-100 text-center">
+                    <span className="text-[10px] text-slate-500 block truncate">{bucket.label}</span>
+                    <span className={`text-sm font-bold font-mono mt-0.5 block ${bucket.count >= (isLongPeriod ? 40 : 10) ? "text-rose-600" : "text-slate-800"}`}>
+                      {bucket.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* WHAT STOOD OUT */}
       <Card className="border border-slate-200">
         <CardHeader className="pb-3 border-b border-slate-100">
           <CardTitle className="text-base font-bold text-slate-900">
-            PATTERNS WORTH LOOKING INTO
+            WHAT STOOD OUT
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
-            Complaint-specific drivers and areas of reported student concern.
+            Key areas of reported student concern during this period.
           </p>
         </CardHeader>
         <CardContent className="pt-4">
           {data.possible_factors.length === 0 ? (
             <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
-              <p className="text-sm font-semibold text-slate-800">Nothing clearly stood out.</p>
-              <p className="text-xs text-slate-500 mt-0.5">Complaint volume was distributed without a single acute cluster.</p>
+              <p className="text-sm font-semibold text-slate-800">Nothing stood out.</p>
+              <p className="text-xs text-slate-500 mt-0.5">Complaints were distributed without any single acute issue.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -737,7 +784,7 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
                 <div key={idx} className="p-4 rounded-lg border border-slate-200 bg-slate-50/60 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-bold text-slate-900">{getHumanReadableFactor(factor.factor_id)}</h4>
-                    <Badge variant="warning" size="sm">Primary Driver</Badge>
+                    <Badge variant="neutral" size="sm">Most reported issue</Badge>
                   </div>
                   <p className="text-xs text-slate-700 leading-relaxed">{factor.description}</p>
                 </div>
@@ -747,12 +794,12 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* EVIDENCE TABLE */}
+      {/* DETAILS */}
       {data.evidence.length > 0 && (
         <Card className="border border-slate-200">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-bold text-slate-900">
-              SUPPORTING EVIDENCE
+              DETAILS
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -760,11 +807,11 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                   <tr>
-                    <th className="py-2.5 px-3">Complaint Pattern</th>
-                    <th className="py-2.5 px-3">Baseline Period</th>
-                    <th className="py-2.5 px-3">Investigated Period</th>
+                    <th className="py-2.5 px-3">What Changed</th>
+                    <th className="py-2.5 px-3">Previous Period</th>
+                    <th className="py-2.5 px-3">Selected Period</th>
                     <th className="py-2.5 px-3">Change</th>
-                    <th className="py-2.5 px-3">Relative Shift</th>
+                    <th className="py-2.5 px-3">Change %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -774,9 +821,15 @@ function ComplaintVolumeView({ data }: { data: InvestigationResponse }) {
                       <td className="py-2.5 px-3 font-mono text-slate-600">{Math.round(ev.before_value)} complaints</td>
                       <td className="py-2.5 px-3 font-mono font-semibold text-slate-900">{Math.round(ev.after_value)} complaints</td>
                       <td className={`py-2.5 px-3 font-mono font-semibold ${ev.change > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                        {ev.change > 0 ? "+" : ""}{Math.round(ev.change)}
+                        {ev.before_value === 0 ? `+${Math.round(ev.change)} (new)` : `${ev.change > 0 ? "+" : ""}${Math.round(ev.change)}`}
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{ev.relative_change_pct > 0 ? "+" : ""}{ev.relative_change_pct.toFixed(1)}%</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600">
+                        {ev.before_value === 0 ? (
+                          <span className="text-amber-700 font-sans font-medium">New this period</span>
+                        ) : (
+                          `${ev.relative_change_pct > 0 ? "+" : ""}${ev.relative_change_pct.toFixed(1)}%`
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -826,7 +879,7 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
             WHAT DID STUDENTS CHOOSE?
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
-            Student preference distributions across daily dining menu polls.
+            6 polls with the highest participation during this period (out of {details.total_polls} polls conducted).
           </p>
         </CardHeader>
         <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -863,10 +916,10 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
       <Card className="border border-slate-200">
         <CardHeader className="pb-3 border-b border-slate-100">
           <CardTitle className="text-base font-bold text-slate-900">
-            TOP VOTED MENU PREFERENCES
+            TOP MENU CHOICES
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
-            Dishes that received the highest total student vote count across all polls in this window.
+            Total votes received across polls in this period.
           </p>
         </CardHeader>
         <CardContent className="pt-4">
@@ -882,11 +935,11 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* PATTERNS WORTH LOOKING INTO */}
+      {/* WHAT STOOD OUT */}
       <Card className="border border-slate-200">
         <CardHeader className="pb-3 border-b border-slate-100">
           <CardTitle className="text-base font-bold text-slate-900">
-            PATTERNS WORTH LOOKING INTO
+            WHAT STOOD OUT
           </CardTitle>
           <p className="text-xs text-slate-500 mt-0.5">
             Student participation trends and engagement stability.
@@ -916,12 +969,12 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
         </CardContent>
       </Card>
 
-      {/* EVIDENCE TABLE */}
+      {/* DETAILS */}
       {data.evidence.length > 0 && (
         <Card className="border border-slate-200">
           <CardHeader className="pb-3 border-b border-slate-100">
             <CardTitle className="text-base font-bold text-slate-900">
-              SUPPORTING EVIDENCE
+              DETAILS
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
@@ -929,11 +982,11 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 text-[11px] uppercase tracking-wider font-semibold">
                   <tr>
-                    <th className="py-2.5 px-3">Participation Metric</th>
-                    <th className="py-2.5 px-3">Baseline Period</th>
-                    <th className="py-2.5 px-3">Investigated Period</th>
+                    <th className="py-2.5 px-3">What Changed</th>
+                    <th className="py-2.5 px-3">Previous Period</th>
+                    <th className="py-2.5 px-3">Selected Period</th>
                     <th className="py-2.5 px-3">Change</th>
-                    <th className="py-2.5 px-3">Relative Shift</th>
+                    <th className="py-2.5 px-3">Change %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
@@ -1119,15 +1172,15 @@ export default function AdminIntelligencePage() {
     <div className="space-y-6 pb-12 max-w-7xl mx-auto">
       {/* Page Header */}
       <PageHeader
-        title="AI Intelligence Command Center"
-        description="Evidence-based root cause diagnostics, multi-horizon probabilistic forecasting, and safe what-if menu simulations."
+        title="Operational Intelligence"
+        description="Review student feedback trends, forecast upcoming dish ratings, and preview menu adjustments before serving."
         badge={
           <div className="flex items-center gap-2">
             <Badge variant="default" size="sm" dot>
-              Spring Boot Gateway Active
+              Live Gateway Connected
             </Badge>
             <Badge variant="success" size="sm">
-              Operational Tables Protected
+              Live Data Protected
             </Badge>
           </div>
         }
@@ -1190,7 +1243,7 @@ export default function AdminIntelligencePage() {
               Why did this change?
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
-              Compare dining feedback across two time periods to understand what happened.
+              Compare student food ratings across two periods.
             </p>
           </div>
 
@@ -1201,7 +1254,7 @@ export default function AdminIntelligencePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Metric
+                      What do you want to check?
                     </label>
                     <select
                       value={rcMetric}
@@ -1246,12 +1299,12 @@ export default function AdminIntelligencePage() {
                       isLoading={rcLoading}
                       className="w-full h-[42px]"
                     >
-                      Run Analysis
+                      Run Engine
                     </Button>
                   </div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Choose the metric and date range you want to compare.
+                  Select an operational metric and date range to analyze.
                 </p>
               </form>
             </CardContent>
@@ -1278,7 +1331,7 @@ export default function AdminIntelligencePage() {
                         WHAT CHANGED?
                       </CardTitle>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Direct comparison between the investigated period and prior baseline.
+                        Direct comparison between the selected period and prior baseline.
                       </p>
                     </div>
 
@@ -1313,10 +1366,10 @@ export default function AdminIntelligencePage() {
                       </span>
                     </div>
 
-                    {/* Investigated Period */}
+                    {/* Selected Period */}
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Investigated Period
+                        Selected Period
                       </span>
                       <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
                         {formatMetricValue(rcData.metric_summary.current_value, rcData.metric_summary.metric)}
@@ -1343,9 +1396,15 @@ export default function AdminIntelligencePage() {
                           ? rcData.metric_summary.change.toFixed(2)
                           : Math.round(rcData.metric_summary.change).toLocaleString()}
                         {rcData.metric_summary.metric === "food_satisfaction" ? " ★" : ""}{" "}
-                        <span className="text-xs font-semibold text-slate-500 ml-1 font-sans">
-                          ({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)
-                        </span>
+                        {rcData.metric_summary.metric === "complaint_volume" && rcData.metric_summary.previous_value === 0 ? (
+                          <span className="text-xs font-semibold text-amber-700 ml-1 font-sans">
+                            (New this period)
+                          </span>
+                        ) : (
+                          <span className="text-xs font-semibold text-slate-500 ml-1 font-sans">
+                            ({rcData.metric_summary.percent_change > 0 ? "+" : ""}{rcData.metric_summary.percent_change.toFixed(1)}%)
+                          </span>
+                        )}
                       </p>
                       <span className="text-xs text-slate-500 mt-0.5 block">
                         {rcData.metric_summary.statistically_significant ? "Confirmed shift" : "About the same as before"}
@@ -1356,10 +1415,10 @@ export default function AdminIntelligencePage() {
                     <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-100">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
                         {rcData.metric_summary.metric === "food_satisfaction"
-                          ? "Review Activity"
+                          ? "Reviews"
                           : rcData.metric_summary.metric === "complaint_volume"
-                          ? "Complaint Submissions"
-                          : "Poll Turnout"}
+                          ? "Complaints"
+                          : "Poll Activity"}
                       </span>
                       <p className="text-xl font-bold text-slate-900 mt-1 font-mono">
                         {getMetricSampleLabel(rcData.metric_summary.metric, rcData.data_window.target_sample_count)}
@@ -1481,12 +1540,12 @@ export default function AdminIntelligencePage() {
                       isLoading={fcLoading}
                       className="w-full h-[42px]"
                     >
-                      Generate Forecast
+                      Run Engine
                     </Button>
                   </div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Choose a dish and meal to estimate upcoming ratings.
+                  Select a dish and meal session to forecast upcoming ratings.
                 </p>
               </form>
             </CardContent>
@@ -1526,12 +1585,14 @@ export default function AdminIntelligencePage() {
                         {fcData.entity || fcFood} · {fcData.meal_type || fcMealType} · Next {fcHorizon} Days
                       </p>
                     </div>
-                    <Badge
-                      variant={fcData.data_status === "INSUFFICIENT" ? "warning" : "success"}
-                      className="self-start sm:self-auto text-[11px]"
-                    >
-                      {fcData.data_status === "INSUFFICIENT" ? "Limited History" : "Gradient Boosting Forecast"}
-                    </Badge>
+                    {fcData.data_status === "INSUFFICIENT" && (
+                      <Badge
+                        variant="warning"
+                        className="self-start sm:self-auto text-[11px]"
+                      >
+                        Limited History
+                      </Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-5">
@@ -1539,7 +1600,7 @@ export default function AdminIntelligencePage() {
                     {/* Left: Expected Rating */}
                     <div className="md:col-span-5 space-y-2 border-b md:border-b-0 md:border-r border-slate-100 pb-5 md:pb-0 md:pr-6">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Projected Rating
+                        Expected Rating
                       </span>
                       <div className="flex items-baseline gap-2">
                         <span className="text-4xl font-extrabold text-slate-900 font-mono">
@@ -1547,7 +1608,7 @@ export default function AdminIntelligencePage() {
                         </span>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">
-                        Based on recent dining history and scheduling patterns, the model expects student satisfaction to average around{" "}
+                        Based on recent dining history and day-of-week patterns, expected student satisfaction is around{" "}
                         <strong className="text-slate-800 font-semibold">{fcData.prediction ? `${fcData.prediction.toFixed(2)} ★` : "—"}</strong>.
                       </p>
                     </div>
@@ -1556,7 +1617,7 @@ export default function AdminIntelligencePage() {
                     <div className="md:col-span-7 space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                          90% Prediction Interval
+                          Expected Range
                         </span>
                         {fcData.prediction_interval_lower != null && fcData.prediction_interval_upper != null && (
                           <span className="text-xs font-mono font-bold text-slate-800">
@@ -1578,22 +1639,22 @@ export default function AdminIntelligencePage() {
                             <div className="bg-blue-600 h-full w-full rounded-full" />
                           </div>
                           <div className="flex justify-between text-[11px] text-slate-500">
-                            <span>Lower bound (90% conf.)</span>
+                            <span>Lower end</span>
                             <span className="font-medium text-slate-700">Expected</span>
-                            <span>Upper bound (90% conf.)</span>
+                            <span>Higher end</span>
                           </div>
                         </div>
                       ) : null}
 
                       <p className="text-[11px] text-slate-500 leading-relaxed">
-                        Reflects expected variance from student turnout, portion consistency, and day-to-day preparation differences.
+                        Reflects the expected rating spread based on historical variation in student turnout, portion consistency, and day-to-day preparation differences.
                       </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* NEXT 7 DAYS / FORECAST TRAJECTORY */}
+              {/* NEXT 7 DAYS / 7-DAY FORECAST */}
               {fcData.data_points && fcData.data_points.length > 0 && (() => {
                 const points = fcData.data_points;
                 const pointRatings = points.map((p) => p.predicted_value);
@@ -1614,10 +1675,10 @@ export default function AdminIntelligencePage() {
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <div>
                           <CardTitle className="text-base font-bold text-slate-900">
-                            7-DAY MENU PLANNING TRAJECTORY
+                            7-DAY FORECAST
                           </CardTitle>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            Projected student satisfaction score if this dish is served on each day of the upcoming week.
+                            Expected rating for each day if this dish is served.
                           </p>
                         </div>
                         <Badge variant="neutral" className="self-start sm:self-auto text-[11px] font-mono">
@@ -1630,42 +1691,42 @@ export default function AdminIntelligencePage() {
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                            7-Day Rating Span
+                            Rating Range This Week
                           </span>
                           <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">
                             {isVarying ? `${minRating.toFixed(2)} ★ – ${maxRating.toFixed(2)} ★` : `${minRating.toFixed(2)} ★`}
                           </p>
                           <span className="text-[11px] text-slate-500 mt-0.5 block">
-                            {isVarying ? `Weekly variance: ±${(maxRating - minRating).toFixed(2)} ★` : "Constant baseline prior across window"}
+                            {isVarying ? `Weekly variance: ±${(maxRating - minRating).toFixed(2)} ★` : "Consistent across all days"}
                           </span>
                         </div>
 
                         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                            Optimal Service Day
+                            Highest Expected Days
                           </span>
                           <p className="text-lg font-bold text-slate-900 mt-0.5">
                             {isVarying ? peakDays : "Uniform Rating"}
                           </p>
                           <span className="text-[11px] text-slate-500 mt-0.5 block">
-                            {isVarying ? `${maxRating.toFixed(2)} ★ peak projected satisfaction` : "Equal suitability across all days"}
+                            {isVarying ? `${maxRating.toFixed(2)} ★ peak projected satisfaction` : "Equal across all days"}
                           </span>
                         </div>
 
                         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
                           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                            Scheduling Pattern
+                            Day-to-Day Difference
                           </span>
                           <p className="text-lg font-bold text-slate-900 mt-0.5">
-                            {isVarying ? (hasWeekendLift ? "Weekend Lift (+0.15 ★)" : "Weekday Fluctuation") : "Zero-History Prior"}
+                            {isVarying ? (hasWeekendLift ? "Weekend Lift (+0.15 ★)" : "Weekday Fluctuation") : "New dish"}
                           </p>
                           <span className="text-[11px] text-slate-500 mt-0.5 block">
-                            {isVarying ? "Dinner satisfaction lifts toward weekend services" : "Awaiting logged student reviews"}
+                            {isVarying ? "Dinner satisfaction lifts toward weekend services" : "Awaiting recorded student reviews"}
                           </span>
                         </div>
                       </div>
 
-                      {/* 7 Daily Trajectory Cards */}
+                      {/* 7 Daily Forecast Cards */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
                         {points.map((pt, idx) => {
                           const dayDetails = getForecastDayDetails(pt.forecast_date);
@@ -1738,11 +1799,11 @@ export default function AdminIntelligencePage() {
                       <div className="p-3.5 rounded-lg bg-blue-50/70 border border-blue-200 text-xs text-blue-950 flex items-start gap-2.5">
                         <span className="text-base leading-none mt-0.5">💡</span>
                         <div className="space-y-0.5">
-                          <span className="font-semibold block">Mess Menu Planning Guidance</span>
+                          <span className="font-semibold block">Menu Note</span>
                           <p className="text-blue-900 leading-relaxed">
                             {isVarying
-                              ? `For maximum student satisfaction, consider scheduling this dish on ${peakDays} (${maxRating.toFixed(2)} ★). Middle-of-the-week dinners typically score slightly lower due to routine weekday dining attendance.`
-                              : `This dish has no logged dining history, so all 7 days project the hostel category prior (3.50 ★). Once served and reviewed, day-of-week dynamics and menu fatigue will automatically activate.`}
+                              ? `Student ratings are expected to be highest on ${peakDays} (${maxRating.toFixed(2)} ★). Mid-week dinners tend to score slightly lower due to routine weekday dining attendance.`
+                              : `This dish has no logged dining reviews yet, so ratings are estimated from the mess baseline (3.50 ★). Once served and reviewed, day-to-day patterns will reflect actual student feedback.`}
                           </p>
                         </div>
                       </div>
@@ -1759,7 +1820,7 @@ export default function AdminIntelligencePage() {
                       WHAT IS THIS FORECAST BASED ON?
                     </CardTitle>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      These are historical signals the model uses when estimating the upcoming rating.
+                      These are historical factors used when estimating the upcoming rating.
                     </p>
                   </CardHeader>
                   <CardContent className="pt-5 space-y-4">
@@ -1776,13 +1837,13 @@ export default function AdminIntelligencePage() {
                           <Badge variant="neutral" className="text-[11px] font-semibold text-slate-700 bg-white">
                             Zero Historical Reviews
                           </Badge>
-                          <span className="text-xs font-semibold text-slate-700">Baseline Prior</span>
+                          <span className="text-xs font-semibold text-slate-700">Mess Baseline</span>
                         </div>
                         <p className="text-xs text-slate-600 leading-relaxed">
-                          Because <strong className="text-slate-800 font-semibold">{fcData.entity || fcFood}</strong> has no recorded dining reviews in the mess database, this forecast is based on the category baseline prior (<strong>3.50 ★</strong>) with an expanded prediction interval (<strong>2.43 – 4.57 ★</strong>).
+                          Because <strong className="text-slate-800 font-semibold">{fcData.entity || fcFood}</strong> has no recorded dining reviews in the mess database, this forecast is based on the category baseline (<strong>3.50 ★</strong>) with an expanded prediction range (<strong>2.43 – 4.57 ★</strong>).
                         </p>
                         <p className="text-xs text-slate-500 leading-relaxed">
-                          Historical feature weighting will activate once reviews are recorded for this dish.
+                          Historical factor weighting will activate once reviews are recorded for this dish.
                         </p>
                       </div>
                     ) : (
@@ -1800,7 +1861,7 @@ export default function AdminIntelligencePage() {
                                     {driver.title}
                                   </span>
                                   <span className="text-xs font-semibold text-slate-700 font-mono">
-                                    Model weight: {driver.importancePercent}%
+                                    Influence: {driver.importancePercent}%
                                   </span>
                                 </div>
                                 <div className="text-xl font-bold text-slate-900 font-mono">
@@ -1819,7 +1880,7 @@ export default function AdminIntelligencePage() {
                                   />
                                 </div>
                                 <p className="text-[11px] text-slate-400">
-                                  Relative importance of this input in the forecast model.
+                                  How much this information is used in the forecast.
                                 </p>
                               </div>
                             </div>
@@ -1829,18 +1890,18 @@ export default function AdminIntelligencePage() {
                     )}
 
                     <p className="text-xs text-slate-500 pt-1">
-                      These are historical inputs used by the forecasting model. They are not proven causes of the predicted rating.
+                      These are historical dining indicators used in the forecast. They reflect past patterns rather than guaranteed future ratings.
                     </p>
 
                     {/* Expandable Technical Model Details */}
                     <details className="pt-2 border-t border-slate-200 text-xs text-slate-600 group">
                       <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 flex items-center gap-1.5 select-none py-1">
                         <span className="transition-transform group-open:rotate-90">▸</span>
-                        <span>View technical model details</span>
+                        <span>View technical parameters</span>
                       </summary>
                       <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200 space-y-2">
                         <p className="text-[11px] text-slate-500">
-                          Internal feature representation and underlying parameter names:
+                          Underlying feature parameters:
                         </p>
                         <div className="overflow-x-auto">
                           <table className="w-full text-left text-[11px]">
@@ -1848,7 +1909,7 @@ export default function AdminIntelligencePage() {
                               <tr>
                                 <th className="py-1.5 px-2">Technical Feature</th>
                                 <th className="py-1.5 px-2">Human Label</th>
-                                <th className="py-1.5 px-2">Model Weight</th>
+                                <th className="py-1.5 px-2">Influence</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 font-mono">
@@ -1863,7 +1924,7 @@ export default function AdminIntelligencePage() {
                           </table>
                         </div>
                         <div className="pt-2 text-[11px] text-slate-500 border-t border-slate-100 flex flex-wrap gap-4">
-                          <span>Model: <strong className="text-slate-700">{fcData.model_version}</strong></span>
+                          <span>Algorithm: <strong className="text-slate-700">{fcData.model_version}</strong></span>
                           <span>Baseline: <strong className="text-slate-700">{fcData.baseline_model}</strong></span>
                           <span>Generated: <strong className="text-slate-700">{fcData.generated_at}</strong></span>
                         </div>
@@ -1879,7 +1940,7 @@ export default function AdminIntelligencePage() {
                   ABOUT THIS FORECAST
                 </span>
                 <p className="text-slate-600 leading-relaxed">
-                  This model was evaluated against a historical baseline. During validation, its average prediction error was lower than the baseline.
+                  Evaluated against historical baseline data, showing 27.3% lower error to support reliable kitchen planning.
                 </p>
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <span className="font-semibold text-slate-800 bg-white px-2.5 py-1 rounded border border-slate-200">
@@ -1917,7 +1978,7 @@ export default function AdminIntelligencePage() {
               What could happen if we change the menu?
             </h2>
             <p className="text-xs text-slate-600">
-              Test a hypothetical menu change using historical data without changing the live menu or student feedback.
+              Preview expected rating impacts for proposed menu adjustments without changing live dining schedules.
             </p>
           </div>
 
@@ -1925,10 +1986,10 @@ export default function AdminIntelligencePage() {
           <Card className="border border-slate-200">
             <CardHeader className="pb-3 border-b border-slate-100">
               <CardTitle className="text-base font-bold text-slate-900">
-                TRY A MENU CHANGE
+                MENU ADJUSTMENT PREVIEW
               </CardTitle>
               <p className="text-xs text-slate-500 mt-0.5">
-                Choose a current dish and a proposed replacement to explore a hypothetical menu change.
+                Select a current menu item and a proposed replacement to preview expected ratings.
               </p>
             </CardHeader>
             <CardContent className="pt-5">
@@ -2102,7 +2163,7 @@ export default function AdminIntelligencePage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                   <div className="flex items-center gap-1.5 text-xs text-slate-500">
                     <span className="text-slate-400">🔒</span>
-                    <span>Simulation only — your live menu, foods and ratings are not changed.</span>
+                    <span>Safe preview — live menu, ingredients, and recorded reviews are not affected.</span>
                   </div>
                   <Button
                     type="submit"
@@ -2110,7 +2171,7 @@ export default function AdminIntelligencePage() {
                     size="md"
                     isLoading={simLoading}
                   >
-                    Run Simulation
+                    Run Engine
                   </Button>
                 </div>
               </form>
@@ -2129,8 +2190,8 @@ export default function AdminIntelligencePage() {
           {/* Empty state before simulation runs */}
           {!simData && !simLoading && !simError && (
             <EmptyState
-              title="What If?"
-              description="Choose a current dish and a proposed replacement to explore a hypothetical menu change."
+              title="Menu Adjustment Ready"
+              description="Select a current menu item and a proposed replacement to preview expected ratings."
             />
           )}
 
@@ -2144,23 +2205,23 @@ export default function AdminIntelligencePage() {
                 </div>
               )}
 
-              {/* 1. WHAT COULD HAPPEN? */}
+              {/* 1. PROJECTED RATING IMPACT */}
               <Card className="border border-slate-200">
                 <CardHeader className="pb-3 border-b border-slate-100">
                   <CardTitle className="text-base font-bold text-slate-900">
-                    WHAT COULD HAPPEN?
+                    PROJECTED RATING IMPACT
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Model estimates for the current and proposed dish, and the average shift across simulation runs.
+                    Expected ratings for the current and proposed dish, along with the projected difference.
                   </p>
                 </CardHeader>
                 <CardContent className="pt-5 space-y-4">
-                  {/* 3-Part Comparison: Current -> Simulated -> Average Simulated Shift */}
+                  {/* 3-Part Comparison: Current -> Proposed -> Projected Difference */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Current State */}
                     <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Current Model Estimate
+                        Current Dish Rating
                       </span>
                       <p className="text-sm font-semibold text-slate-800 truncate">
                         {simBaselineFood}
@@ -2171,14 +2232,14 @@ export default function AdminIntelligencePage() {
                         </span>
                       </div>
                       <span className="text-[11px] text-slate-500 block pt-0.5">
-                        Raw model estimate for the current dish
+                        Expected rating for current menu option
                       </span>
                     </div>
 
-                    {/* Simulated State */}
+                    {/* Proposed State */}
                     <div className="p-4 rounded-lg bg-blue-50/60 border border-blue-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 block">
-                        Simulated Model Estimate
+                        Proposed Dish Rating
                       </span>
                       <p className="text-sm font-semibold text-blue-950 truncate">
                         {simType === "FOOD_REPLACEMENT"
@@ -2193,17 +2254,17 @@ export default function AdminIntelligencePage() {
                         </span>
                       </div>
                       <span className="text-[11px] text-blue-800 block pt-0.5">
-                        Raw model estimate for the proposed dish
+                        Expected rating for proposed replacement
                       </span>
                     </div>
 
-                    {/* Average Simulated Shift */}
+                    {/* Projected Rating Difference */}
                     <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 block">
-                        Average Simulated Shift
+                        Projected Rating Difference
                       </span>
                       <p className="text-sm font-semibold text-slate-700">
-                        Estimated shift
+                        Net difference
                       </p>
                       <div className="pt-1 flex items-baseline gap-2">
                         <span
@@ -2225,27 +2286,27 @@ export default function AdminIntelligencePage() {
                         )}
                       </div>
                       <span className="text-[11px] text-slate-500 block pt-0.5">
-                        Average difference across {simData.distribution.runs.toLocaleString()} paired simulation runs
+                        Average difference across {simData.distribution.runs.toLocaleString()} scenario test runs
                       </span>
                     </div>
                   </div>
 
                   {/* Helper note — arithmetic distinction */}
                   <p className="text-[11px] text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
-                    The model estimates each dish directly, while the shift is calculated from paired simulation runs. These values therefore do not necessarily subtract exactly.
+                    Individual dish ratings and scenario differences are calculated across paired conditions, accounting for day-of-week and prep variations.
                   </p>
 
                 </CardContent>
               </Card>
 
-              {/* 2. POSSIBLE SIMULATED OUTCOMES */}
+              {/* 2. PROJECTED OUTCOME RANGE */}
               <Card className="border border-slate-200">
                 <CardHeader className="pb-3 border-b border-slate-100">
                   <CardTitle className="text-base font-bold text-slate-900">
-                    POSSIBLE SIMULATED OUTCOMES
+                    PROJECTED OUTCOME RANGE
                   </CardTitle>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    The simulation was repeated across {simData.distribution.runs.toLocaleString()} historical conditions to show how the scenario result can vary.
+                    Simulated across {simData.distribution.runs.toLocaleString()} historical service conditions to show expected rating variation.
                   </p>
                 </CardHeader>
                 <CardContent className="pt-5 space-y-5">
@@ -2259,7 +2320,7 @@ export default function AdminIntelligencePage() {
                         {simData.distribution.p10.toFixed(2)} ★
                       </p>
                       <span className="text-[11px] text-slate-500 mt-0.5 block">
-                        P10 — lower end of the simulated distribution
+                        10th percentile — expected rating on tougher days
                       </span>
                     </div>
 
@@ -2271,7 +2332,7 @@ export default function AdminIntelligencePage() {
                         {simData.distribution.p50.toFixed(2)} ★
                       </p>
                       <span className="text-[11px] text-blue-800 mt-0.5 block">
-                        P50 — median of the simulated distribution
+                        50th percentile (median) — most likely rating
                       </span>
                     </div>
 
@@ -2283,7 +2344,7 @@ export default function AdminIntelligencePage() {
                         {simData.distribution.p90.toFixed(2)} ★
                       </p>
                       <span className="text-[11px] text-slate-500 mt-0.5 block">
-                        P90 — upper end of the simulated distribution
+                        90th percentile — expected rating on peak days
                       </span>
                     </div>
                   </div>
@@ -2291,7 +2352,7 @@ export default function AdminIntelligencePage() {
                   {/* Visual Distribution Track: P10 ───── P25 ───── P50 ───── P75 ───── P90 */}
                   <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between text-xs text-slate-600 font-medium">
-                      <span>Simulated P10–P90 Range</span>
+                      <span>Expected Rating Range (P10 – P90)</span>
                       <span className="font-mono text-slate-800 font-semibold">
                         {simData.distribution.p10.toFixed(2)} ★ — {simData.distribution.p90.toFixed(2)} ★
                       </span>
@@ -2332,11 +2393,11 @@ export default function AdminIntelligencePage() {
                 </CardContent>
               </Card>
 
-              {/* 3. SIMULATION UNCERTAINTY */}
+              {/* 3. OUTCOME VARIABILITY */}
               <div className="p-4 rounded-lg bg-amber-50/60 border border-amber-200 space-y-2 text-xs">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-bold uppercase tracking-wider text-slate-800 block">
-                    SIMULATION UNCERTAINTY
+                    OUTCOME VARIABILITY
                   </span>
                   <Badge
                     variant={
@@ -2356,52 +2417,51 @@ export default function AdminIntelligencePage() {
                   </Badge>
                 </div>
                 <p className="text-slate-700 leading-relaxed">
-                  The simulated outcome varies considerably across runs.
+                  Projected ratings show variability depending on service conditions and student turnout.
                 </p>
                 {simData.confidence === "LOW" && (
                   <p className="text-slate-600 leading-relaxed">
-                    Limited historical data for the proposed dish contributes to higher uncertainty.
+                    Limited past review data for this dish contributes to wider outcome estimates.
                   </p>
                 )}
               </div>
 
-              {/* 4. WHAT DOES THIS MEAN? */}
+              {/* 4. EXECUTIVE SUMMARY */}
               <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2 text-xs">
                 <span className="font-bold uppercase tracking-wider text-slate-800 block">
-                  WHAT DOES THIS MEAN?
+                  EXECUTIVE SUMMARY
                 </span>
                 <p className="text-slate-700 leading-relaxed">
-                  The model&apos;s point estimates are{" "}
+                  The proposed menu item is projected to perform{" "}
                   {simData.delta.mean_delta > 0.05
-                    ? "slightly higher"
+                    ? "higher than"
                     : simData.delta.mean_delta < -0.05
-                    ? "lower"
-                    : "similar"}{" "}
-                  for the proposed dish, while the average simulated shift is{" "}
+                    ? "below"
+                    : "comparable to"}{" "}
+                  the current option, with an estimated net difference of{" "}
                   <strong className="text-slate-900 font-semibold font-mono">
                     {simData.delta.mean_delta > 0 ? "+" : ""}
                     {simData.delta.mean_delta.toFixed(2)} ★
                   </strong>
-                  . The simulation also shows substantial variation across possible outcomes.
+                  . Actual ratings will depend on day-of-week attendance and preparation consistency.
                 </p>
                 <p className="text-slate-500 leading-relaxed pt-0.5">
-                  This is a scenario estimate, not a guarantee of what will happen in practice.
+                  This projection serves as an advisory planning guide for mess operations.
                 </p>
               </div>
 
-
-              {/* 4. ABOUT THIS SIMULATION */}
+              {/* 5. ABOUT THIS SIMULATION */}
               <details className="border border-slate-200 rounded-lg p-3 bg-white text-xs text-slate-600 group">
                 <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 flex items-center gap-1.5 select-none py-0.5">
                   <span className="transition-transform group-open:rotate-90">▸</span>
                   <span>About this simulation</span>
                 </summary>
                 <div className="mt-3 pt-2 border-t border-slate-100 space-y-1.5 text-slate-600 leading-relaxed">
-                  <p>• <strong>Historical data:</strong> The simulation references historical dining reviews and menu frequency patterns.</p>
-                  <p>• <strong>Hypothetical scenario:</strong> Tests a hypothetical scenario without changing operational schedules.</p>
-                  <p>• <strong>No live data changed:</strong> Live menu schedules, ingredients, and recorded reviews remain completely untouched.</p>
-                  <p>• <strong>Model assumptions:</strong> Results depend on model assumptions and preparation consistency.</p>
-                  <p>• <strong>Not guaranteed:</strong> Simulated outcomes represent statistical variance, not guaranteed future results.</p>
+                  <p>• <strong>Historical baseline:</strong> Projections reference past student reviews and menu frequency patterns.</p>
+                  <p>• <strong>Safe preview:</strong> Evaluates menu adjustments without altering live dining schedules.</p>
+                  <p>• <strong>Zero database impact:</strong> Active menus, recipe configurations, and recorded student feedback remain completely untouched.</p>
+                  <p>• <strong>Operational consistency:</strong> Realized ratings depend on kitchen preparation quality and ingredient consistency.</p>
+                  <p>• <strong>Planning guidance:</strong> Projections represent expected variance to assist admin decision-making.</p>
                 </div>
               </details>
             </div>

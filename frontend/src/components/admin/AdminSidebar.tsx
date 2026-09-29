@@ -93,7 +93,7 @@ export const ADMIN_NAV_ITEMS = [
     ),
   },
   {
-    name: "AI Intelligence",
+    name: "Operational Intelligence",
     href: "/admin/intelligence",
     icon: (
       <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
