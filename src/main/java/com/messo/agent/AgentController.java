@@ -97,6 +97,16 @@ public class AgentController {
     }
 
     /**
+     * Returns recommendations created for a specific Agent Run.
+     *
+     * @return 200 OK with recommendation list, or 404 if run not found
+     */
+    @GetMapping("/runs/{id}/recommendations")
+    public ResponseEntity<List<com.messo.agent.dto.AgentRecommendationResponse>> getRunRecommendations(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getRecommendationsForRun(id));
+    }
+
+    /**
      * Starts the autonomous investigation loop for an existing AgentRun.
      * Synchronously drives the investigation through the planning engine and tools.
      *

@@ -21,6 +21,7 @@ import {
   SimulationResponse,
   SimulationHistoryItem,
 } from "@/types/ai";
+import { AgentOperationsPanel } from "@/components/admin/agent/AgentOperationsPanel";
 
 const FEATURE_LABEL_MAP: Record<string, string> = {
   food_frequency_14d: "How often this dish was served recently",
@@ -1012,7 +1013,7 @@ function PollParticipationView({ data }: { data: InvestigationResponse }) {
 }
 
 export default function AdminIntelligencePage() {
-  const [activeTab, setActiveTab] = useState<"root_cause" | "forecast" | "simulation">("root_cause");
+  const [activeTab, setActiveTab] = useState<"root_cause" | "forecast" | "simulation" | "agent">("root_cause");
   const [foods, setFoods] = useState<string[]>([]);
   const [loadingFoods, setLoadingFoods] = useState(true);
 
@@ -1224,6 +1225,18 @@ export default function AdminIntelligencePage() {
           >
             <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
             3. Simulation Engine (WHAT IF?)
+          </button>
+
+          <button
+            onClick={() => setActiveTab("agent")}
+            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === "agent"
+                ? "border-blue-600 text-blue-600 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            4. Operations Agent (ACTION PROPOSAL)
           </button>
         </nav>
       </div>
@@ -2565,6 +2578,15 @@ export default function AdminIntelligencePage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: OPERATIONS AGENT (ACTION PROPOSAL) */}
+      {/* ========================================================================= */}
+      {activeTab === "agent" && (
+        <div className="space-y-6 animate-in fade-in duration-150">
+          <AgentOperationsPanel />
         </div>
       )}
     </div>

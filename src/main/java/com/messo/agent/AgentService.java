@@ -47,19 +47,22 @@ public class AgentService {
     private final com.messo.agent.tool.AgentToolExecutor toolExecutor;
     private final com.messo.agent.planner.AgentOrchestratorService orchestratorService;
     private final com.messo.agent.execution.ActionExecutionService actionExecutionService;
+    private final com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository;
 
     public AgentService(AgentRunRepository runRepository,
                         AgentStepRepository stepRepository,
                         AgentToolRegistry toolRegistry,
                         com.messo.agent.tool.AgentToolExecutor toolExecutor,
                         com.messo.agent.planner.AgentOrchestratorService orchestratorService,
-                        com.messo.agent.execution.ActionExecutionService actionExecutionService) {
+                        com.messo.agent.execution.ActionExecutionService actionExecutionService,
+                        com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository) {
         this.runRepository = runRepository;
         this.stepRepository = stepRepository;
         this.toolRegistry = toolRegistry;
         this.toolExecutor = toolExecutor;
         this.orchestratorService = orchestratorService;
         this.actionExecutionService = actionExecutionService;
+        this.recommendationRepository = recommendationRepository;
     }
 
     // =========================================================================
@@ -129,6 +132,18 @@ public class AgentService {
         return runRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
                 .map(AgentRunResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Returns recommendations created for a specific Agent Run.
+     */
+    @Transactional(readOnly = true)
+    public List<com.messo.agent.dto.AgentRecommendationResponse> getRecommendationsForRun(Long runId) {
+        findRunOrThrow(runId);
+        return recommendationRepository.findByAgentRunId(runId)
+                .stream()
+                .map(com.messo.agent.dto.AgentRecommendationResponse::from)
                 .collect(Collectors.toList());
     }
 

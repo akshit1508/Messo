@@ -83,7 +83,7 @@ class AgentEndToEndExecutionTest {
         );
         AgentToolRegistry toolRegistry = new AgentToolRegistry();
         agentService = new AgentService(
-                runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService
+                runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService, recommendationRepository
         );
     }
 
