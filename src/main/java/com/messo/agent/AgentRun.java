@@ -82,10 +82,35 @@ public class AgentRun {
 
     /**
      * Whether the run is blocked waiting for operator approval.
-     * Populated in Phase 2 when an ACTION tool is proposed.
      */
     @Column(name = "approval_required")
     private Boolean approvalRequired = false;
+
+    /**
+     * Structured Action Brief JSON generated from the completed investigation.
+     */
+    @Column(name = "action_brief", columnDefinition = "TEXT")
+    private String actionBrief;
+
+    /** Admin email who approved the proposed action. */
+    @Column(name = "approved_by", length = 255)
+    private String approvedBy;
+
+    /** Timestamp when the action brief was approved. */
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    /** Admin email who rejected the proposed action. */
+    @Column(name = "rejected_by", length = 255)
+    private String rejectedBy;
+
+    /** Timestamp when the action brief was rejected. */
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    /** Human-readable explanation if rejected. */
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     // -------------------------------------------------------------------------
     // Timestamps
@@ -187,6 +212,24 @@ public class AgentRun {
 
     public String getFinalResult() { return finalResult; }
     public void setFinalResult(String finalResult) { this.finalResult = finalResult; }
+
+    public String getActionBrief() { return actionBrief; }
+    public void setActionBrief(String actionBrief) { this.actionBrief = actionBrief; }
+
+    public String getApprovedBy() { return approvedBy; }
+    public void setApprovedBy(String approvedBy) { this.approvedBy = approvedBy; }
+
+    public LocalDateTime getApprovedAt() { return approvedAt; }
+    public void setApprovedAt(LocalDateTime approvedAt) { this.approvedAt = approvedAt; }
+
+    public String getRejectedBy() { return rejectedBy; }
+    public void setRejectedBy(String rejectedBy) { this.rejectedBy = rejectedBy; }
+
+    public LocalDateTime getRejectedAt() { return rejectedAt; }
+    public void setRejectedAt(LocalDateTime rejectedAt) { this.rejectedAt = rejectedAt; }
+
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
 
     public String getInitiatedBy() { return initiatedBy; }
     public void setInitiatedBy(String initiatedBy) { this.initiatedBy = initiatedBy; }

@@ -37,25 +37,28 @@ class AgentPlannerOrchestrationTest {
     private AgentPlannerEngine mockPlannerEngine;
 
     private ObjectMapper objectMapper;
+    private com.messo.agent.actionbrief.ActionBriefService actionBriefService;
     private AgentOrchestratorService orchestrator;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+        actionBriefService = new com.messo.agent.actionbrief.ActionBriefService(objectMapper, "", "gemini-1.5-flash");
         orchestrator = new AgentOrchestratorService(
                 runRepository,
                 stepRepository,
                 toolExecutor,
                 mockPlannerEngine,
-                objectMapper
+                objectMapper,
+                actionBriefService
         );
     }
 
     // =========================================================================
-    // 1. Planner receives investigation goal & sequences tools to completion
+    // 1. Planner receives investigation goal & sequences tools to WAITING_FOR_APPROVAL
     // =========================================================================
     @Test
-    void investigationLoop_executesSequenceAndCompletes() {
+    void investigationLoop_executesSequenceAndCompletesWithActionBrief() {
         AgentRun run = createTestRun(1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER_SATISFACTION", "Investigate drop");
         when(runRepository.findById(1L)).thenReturn(Optional.of(run));
         when(runRepository.save(any(AgentRun.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -92,10 +95,14 @@ class AgentPlannerOrchestrationTest {
 
         AgentRun result = orchestrator.runInvestigation(1L);
 
-        assertEquals(AgentRunStatus.COMPLETED, result.getStatus());
+        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, result.getStatus());
+        assertTrue(result.getApprovalRequired());
         assertNotNull(result.getFinalResult());
         assertTrue(result.getFinalResult().contains("Ratings average was 2.8"));
         assertTrue(result.getFinalResult().contains("Root cause identified dinner spice level"));
+
+        assertNotNull(result.getActionBrief());
+        assertTrue(result.getActionBrief().contains("REVIEW_MENU_CHANGE"));
 
         // Verify steps persisted
         verify(stepRepository, times(4)).save(any(AgentStep.class)); // 2 steps * (start + complete)
@@ -170,7 +177,9 @@ class AgentPlannerOrchestrationTest {
 
         AgentRun result = orchestrator.runInvestigation(4L);
 
-        assertEquals(AgentRunStatus.COMPLETED, result.getStatus());
+        assertEquals(AgentRunStatus.WAITING_FOR_APPROVAL, result.getStatus());
+        assertTrue(result.getApprovalRequired());
+        assertNotNull(result.getActionBrief());
         verify(toolExecutor, times(1)).execute(eq("get_recent_ratings"), any());
     }
 

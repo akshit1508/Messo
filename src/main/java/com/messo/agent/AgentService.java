@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
@@ -175,6 +176,56 @@ public class AgentService {
     public AgentRunResponse startInvestigation(Long runId) {
         AgentRun completedRun = orchestratorService.runInvestigation(runId);
         return AgentRunResponse.from(completedRun);
+    }
+
+    // =========================================================================
+    // HUMAN APPROVAL & AUDIT (PHASE 4)
+    // =========================================================================
+
+    /**
+     * Records human administrator approval for an Action Brief.
+     * Transitions run from WAITING_FOR_APPROVAL -> COMPLETED (action execution reserved for Phase 5).
+     *
+     * @param runId      ID of the run to approve
+     * @param adminEmail authenticated admin email
+     * @return updated AgentRunResponse
+     */
+    public AgentRunResponse approveRun(Long runId, String adminEmail) {
+        AgentRun run = findRunOrThrow(runId);
+        if (run.getStatus() != AgentRunStatus.WAITING_FOR_APPROVAL) {
+            throw new IllegalStateException("Run " + runId + " is not waiting for approval (current status: " + run.getStatus() + ")");
+        }
+        run.setApprovalRequired(false);
+        run.setApprovedBy(adminEmail);
+        run.setApprovedAt(LocalDateTime.now());
+        run.setStatus(AgentRunStatus.COMPLETED); // Approved in Phase 4; execution belongs to Phase 5
+        AgentRun saved = runRepository.save(run);
+        log.info("AgentRun {} approved by {}", runId, adminEmail);
+        return AgentRunResponse.from(saved);
+    }
+
+    /**
+     * Records human administrator rejection of an Action Brief.
+     * Transitions run from WAITING_FOR_APPROVAL -> CANCELLED.
+     *
+     * @param runId      ID of the run to reject
+     * @param adminEmail authenticated admin email
+     * @param reason     optional reason for rejection
+     * @return updated AgentRunResponse
+     */
+    public AgentRunResponse rejectRun(Long runId, String adminEmail, String reason) {
+        AgentRun run = findRunOrThrow(runId);
+        if (run.getStatus() != AgentRunStatus.WAITING_FOR_APPROVAL) {
+            throw new IllegalStateException("Run " + runId + " is not waiting for approval (current status: " + run.getStatus() + ")");
+        }
+        run.setApprovalRequired(false);
+        run.setRejectedBy(adminEmail);
+        run.setRejectedAt(LocalDateTime.now());
+        run.setRejectionReason(reason != null && !reason.isBlank() ? reason.trim() : "Rejected by operator.");
+        run.setStatus(AgentRunStatus.CANCELLED);
+        AgentRun saved = runRepository.save(run);
+        log.info("AgentRun {} rejected by {}: reason={}", runId, adminEmail, run.getRejectionReason());
+        return AgentRunResponse.from(saved);
     }
 
     // =========================================================================

@@ -108,6 +108,41 @@ public class AgentController {
         return ResponseEntity.ok(agentService.startInvestigation(id));
     }
 
+    /**
+     * Records administrator approval for an Action Brief in WAITING_FOR_APPROVAL status.
+     * Does NOT execute the action yet (execution belongs to Phase 5).
+     *
+     * @param id             ID of the run to approve
+     * @param authentication authenticated Spring Security user
+     * @return updated AgentRunResponse
+     */
+    @PostMapping("/runs/{id}/approve")
+    public ResponseEntity<AgentRunResponse> approveRun(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(agentService.approveRun(id, adminEmail));
+    }
+
+    /**
+     * Records administrator rejection for an Action Brief in WAITING_FOR_APPROVAL status.
+     * Transitions run to CANCELLED.
+     *
+     * @param id             ID of the run to reject
+     * @param body           optional JSON body with rejection reason
+     * @param authentication authenticated Spring Security user
+     * @return updated AgentRunResponse
+     */
+    @PostMapping("/runs/{id}/reject")
+    public ResponseEntity<AgentRunResponse> rejectRun(
+            @PathVariable Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        String reason = (body != null) ? body.get("reason") : null;
+        return ResponseEntity.ok(agentService.rejectRun(id, adminEmail, reason));
+    }
+
     // =========================================================================
     // Tool Registry
     // =========================================================================

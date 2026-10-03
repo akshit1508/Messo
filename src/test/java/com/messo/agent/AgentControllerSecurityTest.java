@@ -19,6 +19,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -153,7 +154,8 @@ class AgentControllerSecurityTest {
                 AgentTriggerType.MANUAL,
                 AgentRunStatus.PENDING,
                 null, false, "admin@messo.com",
-                LocalDateTime.now(), null, null, null, null, null
+                LocalDateTime.now(), null, null, null, null, null,
+                null, null, null, null, null, null
         );
         when(agentService.createRun(any(), anyString())).thenReturn(mockResponse);
 
@@ -184,7 +186,8 @@ class AgentControllerSecurityTest {
                 1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, null, null,
                 AgentTriggerType.MANUAL, AgentRunStatus.PENDING,
                 null, false, "admin@messo.com",
-                LocalDateTime.now(), null, null, null, null, null
+                LocalDateTime.now(), null, null, null, null, null,
+                null, null, null, null, null, null
         );
         when(agentService.getRun(1L)).thenReturn(mockResponse);
 
@@ -311,7 +314,8 @@ class AgentControllerSecurityTest {
                 1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER", "Dinner issue",
                 AgentTriggerType.MANUAL, AgentRunStatus.COMPLETED, null, false, "admin@messo.com",
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), null, null,
-                "{\"observations\":[\"Observed drop\"]}"
+                "{\"observations\":[\"Observed drop\"]}",
+                null, null, null, null, null, null
         );
         when(agentService.startInvestigation(1L)).thenReturn(mockResponse);
 
@@ -320,5 +324,85 @@ class AgentControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
+    }
+
+    // =========================================================================
+    // 8. approve & reject endpoint security (Phase 4)
+    // =========================================================================
+
+    @Test
+    void unauthenticated_postApprove_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/approve")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void studentRole_postApprove_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/approve")
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminRole_postApprove_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/approve"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postApprove_withCsrf_returns200() throws Exception {
+        AgentRunResponse mockResponse = new AgentRunResponse(
+                1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER", "Dinner issue",
+                AgentTriggerType.MANUAL, AgentRunStatus.COMPLETED, null, false, "admin@messo.com",
+                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), null, null,
+                "{}", "{}", "admin@messo.com", LocalDateTime.now(), null, null, null
+        );
+        when(agentService.approveRun(eq(1L), eq("admin@messo.com"))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/admin/agent/runs/1/approve")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.approvedBy").value("admin@messo.com"));
+    }
+
+    @Test
+    void unauthenticated_postReject_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/reject")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void studentRole_postReject_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/reject")
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postReject_withCsrf_returns200() throws Exception {
+        AgentRunResponse mockResponse = new AgentRunResponse(
+                1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER", "Dinner issue",
+                AgentTriggerType.MANUAL, AgentRunStatus.CANCELLED, null, false, "admin@messo.com",
+                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), null, null,
+                "{}", "{}", null, null, "admin@messo.com", LocalDateTime.now(), "Not viable"
+        );
+        when(agentService.rejectRun(eq(1L), eq("admin@messo.com"), eq("Not viable"))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/admin/agent/runs/1/reject")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Not viable\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"))
+                .andExpect(jsonPath("$.rejectedBy").value("admin@messo.com"))
+                .andExpect(jsonPath("$.rejectionReason").value("Not viable"));
     }
 }

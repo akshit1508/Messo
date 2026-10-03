@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -277,6 +278,51 @@ class AgentServiceTest {
         assertEquals(10L, resp.id());
         assertEquals(AgentRunStatus.COMPLETED, resp.status());
         verify(orchestratorService, times(1)).runInvestigation(10L);
+    }
+
+    // =========================================================================
+    // approveRun & rejectRun (Phase 4)
+    // =========================================================================
+
+    @Test
+    void approveRun_whenWaitingForApproval_transitionsToCompletedAndAudits() {
+        AgentRun waiting = buildRun(20L, AgentRunStatus.WAITING_FOR_APPROVAL, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
+        waiting.setApprovalRequired(true);
+        when(runRepository.findById(20L)).thenReturn(Optional.of(waiting));
+        when(runRepository.save(any(AgentRun.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.messo.agent.dto.AgentRunResponse resp = agentService.approveRun(20L, "approver@messo.com");
+
+        assertNotNull(resp);
+        assertEquals(AgentRunStatus.COMPLETED, resp.status());
+        assertFalse(resp.approvalRequired());
+        assertEquals("approver@messo.com", resp.approvedBy());
+        assertNotNull(resp.approvedAt());
+    }
+
+    @Test
+    void approveRun_whenNotWaitingForApproval_throwsIllegalStateException() {
+        AgentRun pending = buildRun(21L, AgentRunStatus.PENDING, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
+        when(runRepository.findById(21L)).thenReturn(Optional.of(pending));
+
+        assertThrows(IllegalStateException.class, () -> agentService.approveRun(21L, "approver@messo.com"));
+    }
+
+    @Test
+    void rejectRun_whenWaitingForApproval_transitionsToCancelledAndAudits() {
+        AgentRun waiting = buildRun(22L, AgentRunStatus.WAITING_FOR_APPROVAL, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
+        waiting.setApprovalRequired(true);
+        when(runRepository.findById(22L)).thenReturn(Optional.of(waiting));
+        when(runRepository.save(any(AgentRun.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.messo.agent.dto.AgentRunResponse resp = agentService.rejectRun(22L, "rejector@messo.com", "Proposal unfeasible");
+
+        assertNotNull(resp);
+        assertEquals(AgentRunStatus.CANCELLED, resp.status());
+        assertFalse(resp.approvalRequired());
+        assertEquals("rejector@messo.com", resp.rejectedBy());
+        assertNotNull(resp.rejectedAt());
+        assertEquals("Proposal unfeasible", resp.rejectionReason());
     }
 
     // =========================================================================

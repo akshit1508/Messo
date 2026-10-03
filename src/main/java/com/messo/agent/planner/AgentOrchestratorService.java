@@ -49,6 +49,7 @@ public class AgentOrchestratorService {
     private final AgentToolExecutor toolExecutor;
     private final AgentPlannerEngine plannerEngine;
     private final ObjectMapper objectMapper;
+    private final com.messo.agent.actionbrief.ActionBriefService actionBriefService;
 
     @Value("${app.agent.max-steps:6}")
     private int maxSteps = 6;
@@ -58,12 +59,14 @@ public class AgentOrchestratorService {
             AgentStepRepository stepRepository,
             AgentToolExecutor toolExecutor,
             AgentPlannerEngine plannerEngine,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            com.messo.agent.actionbrief.ActionBriefService actionBriefService) {
         this.runRepository = runRepository;
         this.stepRepository = stepRepository;
         this.toolExecutor = toolExecutor;
         this.plannerEngine = plannerEngine;
         this.objectMapper = objectMapper;
+        this.actionBriefService = actionBriefService;
     }
 
     public int getMaxSteps() {
@@ -239,7 +242,8 @@ public class AgentOrchestratorService {
             String reasoning,
             int totalSteps) {
 
-        run.setStatus(AgentRunStatus.COMPLETED);
+        run.setStatus(AgentRunStatus.WAITING_FOR_APPROVAL);
+        run.setApprovalRequired(true);
         run.setCompletedAt(LocalDateTime.now());
         run.setCurrentStepName(null);
 
@@ -260,7 +264,18 @@ public class AgentOrchestratorService {
             run.setFinalResult(objectMapper.writeValueAsString(finalResult));
         } catch (Exception ex) {
             log.error("Failed to serialize final investigation result", ex);
-            run.setFinalResult("{\"status\":\"COMPLETED\"}");
+            run.setFinalResult("{\"status\":\"WAITING_FOR_APPROVAL\"}");
+        }
+
+        // Generate structured Action Brief proposal
+        try {
+            List<AgentStep> executedSteps = stepRepository.findByRunIdOrderBySequenceOrderAsc(run.getId());
+            com.messo.agent.actionbrief.ActionBrief brief = actionBriefService.generateActionBrief(run, finalResult, executedSteps);
+            run.setActionBrief(objectMapper.writeValueAsString(brief));
+            log.info("Generated ActionBrief for run {}: proposedAction={}", run.getId(), brief.proposedAction().type());
+        } catch (Exception ex) {
+            log.error("Failed to generate Action Brief for run {}", run.getId(), ex);
+            return failRun(run, "ACTION_BRIEF_GENERATION_FAILED", "Failed to generate Action Brief: " + ex.getMessage());
         }
 
         return runRepository.save(run);

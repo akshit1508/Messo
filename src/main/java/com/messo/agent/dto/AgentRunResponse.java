@@ -30,7 +30,13 @@ public record AgentRunResponse(
         LocalDateTime completedAt,
         String failureCode,
         String failureReason,
-        String finalResult
+        String finalResult,
+        String actionBrief,
+        String approvedBy,
+        LocalDateTime approvedAt,
+        String rejectedBy,
+        LocalDateTime rejectedAt,
+        String rejectionReason
 
 ) {
 
@@ -53,7 +59,13 @@ public record AgentRunResponse(
                 run.getCompletedAt(),
                 run.getFailureCode(),
                 run.getFailureReason(),
-                run.getFinalResult()
+                run.getFinalResult(),
+                run.getActionBrief(),
+                run.getApprovedBy(),
+                run.getApprovedAt(),
+                run.getRejectedBy(),
+                run.getRejectedAt(),
+                run.getRejectionReason()
         );
     }
 }
