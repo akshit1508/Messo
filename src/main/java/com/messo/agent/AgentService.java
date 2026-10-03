@@ -46,17 +46,20 @@ public class AgentService {
     private final AgentToolRegistry toolRegistry;
     private final com.messo.agent.tool.AgentToolExecutor toolExecutor;
     private final com.messo.agent.planner.AgentOrchestratorService orchestratorService;
+    private final com.messo.agent.execution.ActionExecutionService actionExecutionService;
 
     public AgentService(AgentRunRepository runRepository,
                         AgentStepRepository stepRepository,
                         AgentToolRegistry toolRegistry,
                         com.messo.agent.tool.AgentToolExecutor toolExecutor,
-                        com.messo.agent.planner.AgentOrchestratorService orchestratorService) {
+                        com.messo.agent.planner.AgentOrchestratorService orchestratorService,
+                        com.messo.agent.execution.ActionExecutionService actionExecutionService) {
         this.runRepository = runRepository;
         this.stepRepository = stepRepository;
         this.toolRegistry = toolRegistry;
         this.toolExecutor = toolExecutor;
         this.orchestratorService = orchestratorService;
+        this.actionExecutionService = actionExecutionService;
     }
 
     // =========================================================================
@@ -184,7 +187,8 @@ public class AgentService {
 
     /**
      * Records human administrator approval for an Action Brief.
-     * Transitions run from WAITING_FOR_APPROVAL -> COMPLETED (action execution reserved for Phase 5).
+     * Transitions run from WAITING_FOR_APPROVAL -> APPROVED.
+     * Does NOT execute any action (action execution reserved for Phase 5).
      *
      * @param runId      ID of the run to approve
      * @param adminEmail authenticated admin email
@@ -198,7 +202,7 @@ public class AgentService {
         run.setApprovalRequired(false);
         run.setApprovedBy(adminEmail);
         run.setApprovedAt(LocalDateTime.now());
-        run.setStatus(AgentRunStatus.COMPLETED); // Approved in Phase 4; execution belongs to Phase 5
+        run.setStatus(AgentRunStatus.APPROVED);
         AgentRun saved = runRepository.save(run);
         log.info("AgentRun {} approved by {}", runId, adminEmail);
         return AgentRunResponse.from(saved);
@@ -226,6 +230,21 @@ public class AgentService {
         AgentRun saved = runRepository.save(run);
         log.info("AgentRun {} rejected by {}: reason={}", runId, adminEmail, run.getRejectionReason());
         return AgentRunResponse.from(saved);
+    }
+
+    // =========================================================================
+    // CONTROLLED ACTION EXECUTION (PHASE 5)
+    // =========================================================================
+
+    /**
+     * Executes the approved action for an AgentRun in APPROVED status.
+     *
+     * @param runId      ID of the run to execute
+     * @param adminEmail authenticated admin email executing the action
+     * @return structured ActionExecutionResponse
+     */
+    public com.messo.agent.dto.ActionExecutionResponse executeApprovedAction(Long runId, String adminEmail) {
+        return actionExecutionService.executeApprovedAction(runId, adminEmail);
     }
 
     // =========================================================================

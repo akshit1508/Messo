@@ -357,7 +357,7 @@ class AgentControllerSecurityTest {
     void adminRole_postApprove_withCsrf_returns200() throws Exception {
         AgentRunResponse mockResponse = new AgentRunResponse(
                 1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER", "Dinner issue",
-                AgentTriggerType.MANUAL, AgentRunStatus.COMPLETED, null, false, "admin@messo.com",
+                AgentTriggerType.MANUAL, AgentRunStatus.APPROVED, null, false, "admin@messo.com",
                 LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), null, null,
                 "{}", "{}", "admin@messo.com", LocalDateTime.now(), null, null, null
         );
@@ -366,7 +366,7 @@ class AgentControllerSecurityTest {
         mockMvc.perform(post("/api/admin/agent/runs/1/approve")
                         .with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.status").value("APPROVED"))
                 .andExpect(jsonPath("$.approvedBy").value("admin@messo.com"));
     }
 
@@ -404,5 +404,66 @@ class AgentControllerSecurityTest {
                 .andExpect(jsonPath("$.status").value("CANCELLED"))
                 .andExpect(jsonPath("$.rejectedBy").value("admin@messo.com"))
                 .andExpect(jsonPath("$.rejectionReason").value("Not viable"));
+    }
+
+    // =========================================================================
+    // 8. executeRun endpoint security (Phase 5)
+    // =========================================================================
+
+    @Test
+    void unauthenticated_postExecute_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/execute")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void studentRole_postExecute_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/execute")
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminRole_postExecute_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/execute"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postExecute_withCsrf_returns200() throws Exception {
+        com.messo.agent.dto.ActionExecutionResponse mockResponse = com.messo.agent.dto.ActionExecutionResponse.success(
+                1L, AgentRunStatus.COMPLETED, "REVIEW_MENU_CHANGE", "Created recommendation",
+                java.util.Map.of("recommendationId", 101L)
+        );
+        when(agentService.executeApprovedAction(eq(1L), eq("admin@messo.com"))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/admin/agent/runs/1/execute")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runId").value(1L))
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.actionType").value("REVIEW_MENU_CHANGE"))
+                .andExpect(jsonPath("$.executionStatus").value("SUCCESS"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postExecute_whenServiceReturnsFailedExecution_returns200WithFailedStatus() throws Exception {
+        com.messo.agent.dto.ActionExecutionResponse mockResponse = com.messo.agent.dto.ActionExecutionResponse.failure(
+                2L, AgentRunStatus.FAILED, "UNSUPPORTED_ACTION_TYPE", "Action type is unsupported"
+        );
+        when(agentService.executeApprovedAction(eq(2L), eq("admin@messo.com"))).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/admin/agent/runs/2/execute")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.runId").value(2L))
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.executionStatus").value("FAILED"))
+                .andExpect(jsonPath("$.error").value("Action type is unsupported"));
     }
 }

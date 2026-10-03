@@ -33,6 +33,11 @@ class AgentStatusEnumTest {
     }
 
     @Test
+    void agentRunStatus_approvedExists() {
+        assertEquals(AgentRunStatus.APPROVED, AgentRunStatus.valueOf("APPROVED"));
+    }
+
+    @Test
     void agentRunStatus_completedExists() {
         assertEquals(AgentRunStatus.COMPLETED, AgentRunStatus.valueOf("COMPLETED"));
     }
@@ -48,8 +53,8 @@ class AgentStatusEnumTest {
     }
 
     @Test
-    void agentRunStatus_hasSixValues() {
-        assertEquals(6, AgentRunStatus.values().length);
+    void agentRunStatus_hasSevenValues() {
+        assertEquals(7, AgentRunStatus.values().length);
     }
 
     @Test

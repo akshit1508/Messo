@@ -33,9 +33,14 @@ public enum AgentRunStatus {
     /**
      * Run has paused and is waiting for a human operator to approve a
      * proposed action before execution continues.
-     * Reserved for Phase 2.
      */
     WAITING_FOR_APPROVAL,
+
+    /**
+     * Human operator has approved the proposed action brief.
+     * The run is ready for action execution in Phase 5.
+     */
+    APPROVED,
 
     /** Run finished successfully; all steps completed without error. */
     COMPLETED,

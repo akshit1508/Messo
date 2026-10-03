@@ -46,13 +46,16 @@ class AgentServiceTest {
     @Mock
     private com.messo.agent.planner.AgentOrchestratorService orchestratorService;
 
+    @Mock
+    private com.messo.agent.execution.ActionExecutionService actionExecutionService;
+
     private AgentToolRegistry toolRegistry;
     private AgentService agentService;
 
     @BeforeEach
     void setUp() {
         toolRegistry = new AgentToolRegistry();
-        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService);
+        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService);
     }
 
     // =========================================================================
@@ -285,7 +288,7 @@ class AgentServiceTest {
     // =========================================================================
 
     @Test
-    void approveRun_whenWaitingForApproval_transitionsToCompletedAndAudits() {
+    void approveRun_whenWaitingForApproval_transitionsToApprovedAndAudits() {
         AgentRun waiting = buildRun(20L, AgentRunStatus.WAITING_FOR_APPROVAL, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
         waiting.setApprovalRequired(true);
         when(runRepository.findById(20L)).thenReturn(Optional.of(waiting));
@@ -294,10 +297,25 @@ class AgentServiceTest {
         com.messo.agent.dto.AgentRunResponse resp = agentService.approveRun(20L, "approver@messo.com");
 
         assertNotNull(resp);
-        assertEquals(AgentRunStatus.COMPLETED, resp.status());
+        assertEquals(AgentRunStatus.APPROVED, resp.status());
         assertFalse(resp.approvalRequired());
         assertEquals("approver@messo.com", resp.approvedBy());
         assertNotNull(resp.approvedAt());
+    }
+
+    @Test
+    void approveRun_doesNotExecuteAnyActionTools() {
+        AgentRun waiting = buildRun(25L, AgentRunStatus.WAITING_FOR_APPROVAL, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
+        waiting.setApprovalRequired(true);
+        when(runRepository.findById(25L)).thenReturn(Optional.of(waiting));
+        when(runRepository.save(any(AgentRun.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        com.messo.agent.dto.AgentRunResponse resp = agentService.approveRun(25L, "approver@messo.com");
+
+        assertNotNull(resp);
+        assertEquals(AgentRunStatus.APPROVED, resp.status());
+        // Verify tool executor was never called during approval
+        verifyNoInteractions(toolExecutor);
     }
 
     @Test
@@ -323,6 +341,25 @@ class AgentServiceTest {
         assertEquals("rejector@messo.com", resp.rejectedBy());
         assertNotNull(resp.rejectedAt());
         assertEquals("Proposal unfeasible", resp.rejectionReason());
+    }
+
+    // =========================================================================
+    // executeApprovedAction (Phase 5)
+    // =========================================================================
+
+    @Test
+    void executeApprovedAction_delegatesToActionExecutionService() {
+        com.messo.agent.dto.ActionExecutionResponse expectedResp = com.messo.agent.dto.ActionExecutionResponse.success(
+                30L, AgentRunStatus.COMPLETED, "REVIEW_MENU_CHANGE", "Created recommendation", java.util.Map.of()
+        );
+        when(actionExecutionService.executeApprovedAction(30L, "admin@test.com")).thenReturn(expectedResp);
+
+        com.messo.agent.dto.ActionExecutionResponse actualResp = agentService.executeApprovedAction(30L, "admin@test.com");
+
+        assertNotNull(actualResp);
+        assertEquals(30L, actualResp.runId());
+        assertEquals(AgentRunStatus.COMPLETED, actualResp.status());
+        verify(actionExecutionService, times(1)).executeApprovedAction(30L, "admin@test.com");
     }
 
     // =========================================================================

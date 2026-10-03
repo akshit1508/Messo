@@ -143,6 +143,29 @@ public class AgentController {
         return ResponseEntity.ok(agentService.rejectRun(id, adminEmail, reason));
     }
 
+    /**
+     * Executes the approved action for an AgentRun in APPROVED status (Phase 5).
+     *
+     * <p>Safety rules:</p>
+     * <ul>
+     *   <li>Must be authenticated as ROLE_ADMIN (inherited from /api/admin/**)</li>
+     *   <li>Must provide valid CSRF token</li>
+     *   <li>Loads the persisted ActionBrief from the APPROVED run; client cannot provide a different action payload</li>
+     *   <li>Enforces idempotency: repeated execution does not duplicate actions</li>
+     * </ul>
+     *
+     * @param id             ID of the approved run to execute
+     * @param authentication authenticated Spring Security user
+     * @return updated ActionExecutionResponse
+     */
+    @PostMapping("/runs/{id}/execute")
+    public ResponseEntity<com.messo.agent.dto.ActionExecutionResponse> executeRun(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(agentService.executeApprovedAction(id, adminEmail));
+    }
+
     // =========================================================================
     // Tool Registry
     // =========================================================================
