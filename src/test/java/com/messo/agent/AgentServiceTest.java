@@ -42,13 +42,16 @@ class AgentServiceTest {
     @Mock
     private com.messo.agent.tool.AgentToolExecutor toolExecutor;
 
+    @Mock
+    private com.messo.agent.planner.AgentOrchestratorService orchestratorService;
+
     private AgentToolRegistry toolRegistry;
     private AgentService agentService;
 
     @BeforeEach
     void setUp() {
         toolRegistry = new AgentToolRegistry();
-        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor);
+        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService);
     }
 
     // =========================================================================
@@ -257,6 +260,23 @@ class AgentServiceTest {
         assertNotNull(resp);
         assertFalse(resp.success());
         assertEquals("ACTION_EXECUTION_BLOCKED", resp.errorCode());
+    }
+
+    // =========================================================================
+    // startInvestigation (Phase 3A)
+    // =========================================================================
+
+    @Test
+    void startInvestigation_delegatesToOrchestratorService() {
+        AgentRun completed = buildRun(10L, AgentRunStatus.COMPLETED, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "admin@test.com");
+        when(orchestratorService.runInvestigation(10L)).thenReturn(completed);
+
+        com.messo.agent.dto.AgentRunResponse resp = agentService.startInvestigation(10L);
+
+        assertNotNull(resp);
+        assertEquals(10L, resp.id());
+        assertEquals(AgentRunStatus.COMPLETED, resp.status());
+        verify(orchestratorService, times(1)).runInvestigation(10L);
     }
 
     // =========================================================================

@@ -44,15 +44,18 @@ public class AgentService {
     private final AgentStepRepository stepRepository;
     private final AgentToolRegistry toolRegistry;
     private final com.messo.agent.tool.AgentToolExecutor toolExecutor;
+    private final com.messo.agent.planner.AgentOrchestratorService orchestratorService;
 
     public AgentService(AgentRunRepository runRepository,
                         AgentStepRepository stepRepository,
                         AgentToolRegistry toolRegistry,
-                        com.messo.agent.tool.AgentToolExecutor toolExecutor) {
+                        com.messo.agent.tool.AgentToolExecutor toolExecutor,
+                        com.messo.agent.planner.AgentOrchestratorService orchestratorService) {
         this.runRepository = runRepository;
         this.stepRepository = stepRepository;
         this.toolRegistry = toolRegistry;
         this.toolExecutor = toolExecutor;
+        this.orchestratorService = orchestratorService;
     }
 
     // =========================================================================
@@ -156,6 +159,22 @@ public class AgentService {
         com.messo.agent.tool.input.ToolInput input = com.messo.agent.tool.input.ToolInput.of(params);
         com.messo.agent.tool.result.ToolResult result = toolExecutor.execute(toolName, input);
         return ToolExecutionResponse.from(result);
+    }
+
+    // =========================================================================
+    // INVESTIGATION ORCHESTRATION (PHASE 3A)
+    // =========================================================================
+
+    /**
+     * Executes the investigation loop for an existing AgentRun.
+     * Transitions run from PENDING -> RUNNING -> COMPLETED/FAILED.
+     *
+     * @param runId the ID of the run
+     * @return the updated AgentRunResponse
+     */
+    public AgentRunResponse startInvestigation(Long runId) {
+        AgentRun completedRun = orchestratorService.runInvestigation(runId);
+        return AgentRunResponse.from(completedRun);
     }
 
     // =========================================================================

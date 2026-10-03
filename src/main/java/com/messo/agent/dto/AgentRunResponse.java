@@ -29,7 +29,8 @@ public record AgentRunResponse(
         LocalDateTime startedAt,
         LocalDateTime completedAt,
         String failureCode,
-        String failureReason
+        String failureReason,
+        String finalResult
 
 ) {
 
@@ -51,7 +52,8 @@ public record AgentRunResponse(
                 run.getStartedAt(),
                 run.getCompletedAt(),
                 run.getFailureCode(),
-                run.getFailureReason()
+                run.getFailureReason(),
+                run.getFinalResult()
         );
     }
 }

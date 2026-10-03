@@ -153,7 +153,7 @@ class AgentControllerSecurityTest {
                 AgentTriggerType.MANUAL,
                 AgentRunStatus.PENDING,
                 null, false, "admin@messo.com",
-                LocalDateTime.now(), null, null, null, null
+                LocalDateTime.now(), null, null, null, null, null
         );
         when(agentService.createRun(any(), anyString())).thenReturn(mockResponse);
 
@@ -184,7 +184,7 @@ class AgentControllerSecurityTest {
                 1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, null, null,
                 AgentTriggerType.MANUAL, AgentRunStatus.PENDING,
                 null, false, "admin@messo.com",
-                LocalDateTime.now(), null, null, null, null
+                LocalDateTime.now(), null, null, null, null, null
         );
         when(agentService.getRun(1L)).thenReturn(mockResponse);
 
@@ -276,5 +276,49 @@ class AgentControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.toolName").value("get_recent_ratings"));
+    }
+
+    // =========================================================================
+    // 7. startInvestigation endpoint security (Phase 3A)
+    // =========================================================================
+
+    @Test
+    void unauthenticated_postStartInvestigation_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/start")
+                        .with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void studentRole_postStartInvestigation_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/start")
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminRole_postStartInvestigation_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/start"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminRole_postStartInvestigation_withCsrf_returns200() throws Exception {
+        AgentRunResponse mockResponse = new AgentRunResponse(
+                1L, AgentGoalType.INVESTIGATE_OPERATIONAL_ISSUE, "DINNER", "Dinner issue",
+                AgentTriggerType.MANUAL, AgentRunStatus.COMPLETED, null, false, "admin@messo.com",
+                LocalDateTime.now(), LocalDateTime.now(), LocalDateTime.now(), null, null,
+                "{\"observations\":[\"Observed drop\"]}"
+        );
+        when(agentService.startInvestigation(1L)).thenReturn(mockResponse);
+
+        mockMvc.perform(post("/api/admin/agent/runs/1/start")
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
     }
 }

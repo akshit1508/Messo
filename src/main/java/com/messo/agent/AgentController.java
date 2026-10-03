@@ -96,6 +96,18 @@ public class AgentController {
         return ResponseEntity.ok(agentService.getStepsForRun(id));
     }
 
+    /**
+     * Starts the autonomous investigation loop for an existing AgentRun.
+     * Synchronously drives the investigation through the planning engine and tools.
+     *
+     * @param id ID of the run
+     * @return updated AgentRunResponse
+     */
+    @PostMapping("/runs/{id}/start")
+    public ResponseEntity<AgentRunResponse> startInvestigation(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.startInvestigation(id));
+    }
+
     // =========================================================================
     // Tool Registry
     // =========================================================================

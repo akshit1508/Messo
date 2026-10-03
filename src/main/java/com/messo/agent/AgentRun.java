@@ -112,6 +112,13 @@ public class AgentRun {
     @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String failureReason;
 
+    /**
+     * Structured final result JSON produced upon completion of the investigation.
+     * Contains OBSERVATION, EVIDENCE, POSSIBLE FACTOR, MODEL OUTPUT, and REASONING SUMMARY.
+     */
+    @Column(name = "final_result", columnDefinition = "TEXT")
+    private String finalResult;
+
     // -------------------------------------------------------------------------
     // Audit: who initiated this run
     // -------------------------------------------------------------------------
@@ -177,6 +184,9 @@ public class AgentRun {
 
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public String getFinalResult() { return finalResult; }
+    public void setFinalResult(String finalResult) { this.finalResult = finalResult; }
 
     public String getInitiatedBy() { return initiatedBy; }
     public void setInitiatedBy(String initiatedBy) { this.initiatedBy = initiatedBy; }
