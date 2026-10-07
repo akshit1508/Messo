@@ -466,4 +466,105 @@ class AgentControllerSecurityTest {
                 .andExpect(jsonPath("$.executionStatus").value("FAILED"))
                 .andExpect(jsonPath("$.error").value("Action type is unsupported"));
     }
+
+    // =========================================================================
+    // 5. PHASE 7.2 IMPLEMENTATION TASKS SECURITY
+    // =========================================================================
+
+    @Test
+    void unauthenticated_getRunTasks_returns401() throws Exception {
+        mockMvc.perform(get("/api/admin/agent/runs/1/tasks"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void unauthenticated_postStartTask_returns401() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/tasks/10/start").with(csrf()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT", username = "student@messo.com")
+    void studentRole_getRunTasks_returns403() throws Exception {
+        mockMvc.perform(get("/api/admin/agent/runs/1/tasks"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT", username = "student@messo.com")
+    void studentRole_postStartTask_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/tasks/10/start").with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT", username = "student@messo.com")
+    void studentRole_postCompleteTask_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/tasks/10/complete").with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postCreateTask_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/runs/1/tasks"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postStartTask_withoutCsrf_returns403() throws Exception {
+        mockMvc.perform(post("/api/admin/agent/tasks/10/start"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postCreateTask_withCsrf_returns201() throws Exception {
+        com.messo.agent.dto.AgentImplementationTaskResponse mockTask = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                50L, 1L, 100L, "Review dinner menu options", "Description", "Reason", "Dinner",
+                com.messo.agent.task.AgentImplementationTaskStatus.OPEN, "MESO AI Operations Agent",
+                LocalDateTime.now(), null, null
+        );
+        when(agentService.createTaskForRun(eq(1L), eq("admin@messo.com"))).thenReturn(mockTask);
+
+        mockMvc.perform(post("/api/admin/agent/runs/1/tasks").with(csrf()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(50L))
+                .andExpect(jsonPath("$.title").value("Review dinner menu options"))
+                .andExpect(jsonPath("$.status").value("OPEN"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postStartTask_withCsrf_returns200() throws Exception {
+        com.messo.agent.dto.AgentImplementationTaskResponse mockTask = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                50L, 1L, 100L, "Review dinner menu options", "Description", "Reason", "Dinner",
+                com.messo.agent.task.AgentImplementationTaskStatus.IN_PROGRESS, "MESO AI Operations Agent",
+                LocalDateTime.now(), null, null
+        );
+        when(agentService.startTask(eq(50L), eq("admin@messo.com"))).thenReturn(mockTask);
+
+        mockMvc.perform(post("/api/admin/agent/tasks/50/start").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(50L))
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN", username = "admin@messo.com")
+    void adminRole_postCompleteTask_withCsrf_returns200() throws Exception {
+        com.messo.agent.dto.AgentImplementationTaskResponse mockTask = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                50L, 1L, 100L, "Review dinner menu options", "Description", "Reason", "Dinner",
+                com.messo.agent.task.AgentImplementationTaskStatus.COMPLETED, "MESO AI Operations Agent",
+                LocalDateTime.now(), "admin@messo.com", LocalDateTime.now()
+        );
+        when(agentService.completeTask(eq(50L), eq("admin@messo.com"))).thenReturn(mockTask);
+
+        mockMvc.perform(post("/api/admin/agent/tasks/50/complete").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(50L))
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.completedBy").value("admin@messo.com"));
+    }
 }

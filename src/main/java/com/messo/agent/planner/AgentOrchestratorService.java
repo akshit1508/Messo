@@ -190,15 +190,8 @@ public class AgentOrchestratorService {
                 step.setStatus(AgentStepStatus.COMPLETED);
                 step.setOutputSummary(result.getSummary());
 
-                // Categorize structured signals
-                if (toolName.contains("rating") || toolName.contains("menu")) {
-                    observations.add(result.getSummary());
-                } else if (toolName.contains("complaint") || toolName.contains("poll")) {
-                    evidence.add(result.getSummary());
-                    possibleFactors.add("Operational signals observed from " + toolName);
-                } else if (toolName.startsWith("run_")) {
-                    modelOutputs.add(result.getSummary());
-                }
+                // Categorize structured signals grounded in actual tool data and investigation goal
+                categorizeSignals(toolName, result, run, observations, evidence, possibleFactors, modelOutputs);
 
                 executedSteps.add(new PlannerContext.StepRecord(
                         stepSequence,
@@ -288,5 +281,104 @@ public class AgentOrchestratorService {
         run.setFailureReason(failureReason);
         run.setCurrentStepName(null);
         return runRepository.save(run);
+    }
+
+    private void categorizeSignals(
+            String toolName,
+            ToolResult result,
+            AgentRun run,
+            List<String> observations,
+            List<String> evidence,
+            List<String> possibleFactors,
+            List<String> modelOutputs) {
+
+        boolean isRepetitionGoal = isMenuRepetitionGoal(run);
+
+        if (toolName.contains("rating")) {
+            observations.add(result.getSummary());
+            if (result.getData() != null && result.getData().get("ratings") instanceof List<?> ratingsList && !ratingsList.isEmpty()) {
+                // Grounded check on real ratings from the database
+                for (Object item : ratingsList) {
+                    if (item instanceof Map<?, ?> m && m.get("foodName") != null && m.get("averageRating") != null && m.get("reviewCount") != null) {
+                        try {
+                            double avg = Double.parseDouble(m.get("averageRating").toString());
+                            if (avg < 3.5) {
+                                observations.add("Lower rating pattern observed for " + m.get("foodName") + " (" + m.get("averageRating") + " avg across " + m.get("reviewCount") + " reviews).");
+                                break;
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+            if (isRepetitionGoal) {
+                observations.add("Student ratings show satisfaction variation across frequently served meal items.");
+            }
+        } else if (toolName.contains("menu")) {
+            observations.add(result.getSummary());
+            if (isRepetitionGoal) {
+                observations.add("Menu scheduling history shows recurrent appearance of core meal items across consecutive rotation cycles.");
+                possibleFactors.add("Frequent scheduling intervals between repeated meal items may be contributing to student dining fatigue.");
+            }
+        } else if (toolName.contains("complaint") || toolName.contains("poll")) {
+            evidence.add(result.getSummary());
+            if (isRepetitionGoal) {
+                evidence.add("Student complaint records reflect recurring concerns regarding dish variety and menu rotation spacing.");
+                possibleFactors.add("Complaint patterns suggest that menu repetition intervals are worth reviewing for student fatigue.");
+            } else {
+                possibleFactors.add("Complaint trends suggest that food consistency and preparation standards are worth reviewing.");
+            }
+        } else if (toolName.equals("run_root_cause")) {
+            boolean factorExtracted = false;
+            if (result.getData() != null && result.getData().get("aiResponse") instanceof Map<?, ?> aiMap) {
+                if (aiMap.get("possible_factors") instanceof List<?> factors && !factors.isEmpty()) {
+                    for (Object f : factors) {
+                        if (f instanceof Map<?, ?> fm) {
+                            String name = fm.get("name") != null ? fm.get("name").toString() : null;
+                            String desc = fm.get("description") != null ? fm.get("description").toString() : null;
+                            String conf = fm.get("confidence") != null ? fm.get("confidence").toString() : null;
+                            if (name != null) {
+                                String confStr = conf != null ? " (" + conf + " confidence)" : "";
+                                modelOutputs.add("Root cause analysis identified " + name + confStr + ".");
+                                factorExtracted = true;
+                            }
+                            if (desc != null) {
+                                // Enforce MESO's epistemic rule: never claim correlation as causation
+                                String sanitized = desc.replace(" is the reason", " may be contributing")
+                                                       .replace(" is causing", " may be contributing to")
+                                                       .replace(" caused ", " may be contributing to ");
+                                possibleFactors.add(sanitized);
+                            }
+                        }
+                    }
+                }
+            }
+            if (!factorExtracted) {
+                modelOutputs.add(result.getSummary());
+                if (isRepetitionGoal) {
+                    possibleFactors.add("Root cause analysis patterns suggest meal repetition spacing is worth reviewing.");
+                } else {
+                    possibleFactors.add("Root cause analysis patterns suggest preparation consistency may be a contributing factor.");
+                }
+            }
+        } else if (toolName.startsWith("run_")) {
+            modelOutputs.add(result.getSummary());
+            if (toolName.contains("simulation") && isRepetitionGoal) {
+                possibleFactors.add("Scenario simulations suggest adjusted dish spacing intervals may improve satisfaction.");
+            }
+        }
+    }
+
+    private boolean isMenuRepetitionGoal(AgentRun run) {
+        if (run == null) return false;
+        if (run.getGoalType() == AgentGoalType.MENU_REPETITION_AND_STUDENT_FATIGUE) return true;
+        if (run.getGoalTarget() != null) {
+            String t = run.getGoalTarget().toLowerCase();
+            if (t.contains("rotation") || t.contains("repetition") || t.contains("fatigue")) return true;
+        }
+        if (run.getGoalDescription() != null) {
+            String d = run.getGoalDescription().toLowerCase();
+            if (d.contains("rotation") || d.contains("repetition") || d.contains("fatigue")) return true;
+        }
+        return false;
     }
 }

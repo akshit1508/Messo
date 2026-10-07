@@ -34,5 +34,10 @@ public enum AgentGoalType {
      * Review historical and predicted performance of a menu item
      * or the full menu across a time window.
      */
-    REVIEW_MENU_PERFORMANCE
+    REVIEW_MENU_PERFORMANCE,
+
+    /**
+     * Investigate student menu fatigue and repetitive dish scheduling.
+     */
+    MENU_REPETITION_AND_STUDENT_FATIGUE
 }

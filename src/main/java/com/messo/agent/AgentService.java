@@ -48,6 +48,7 @@ public class AgentService {
     private final com.messo.agent.planner.AgentOrchestratorService orchestratorService;
     private final com.messo.agent.execution.ActionExecutionService actionExecutionService;
     private final com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository;
+    private final com.messo.agent.task.AgentImplementationTaskService taskService;
 
     public AgentService(AgentRunRepository runRepository,
                         AgentStepRepository stepRepository,
@@ -55,7 +56,8 @@ public class AgentService {
                         com.messo.agent.tool.AgentToolExecutor toolExecutor,
                         com.messo.agent.planner.AgentOrchestratorService orchestratorService,
                         com.messo.agent.execution.ActionExecutionService actionExecutionService,
-                        com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository) {
+                        com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository,
+                        com.messo.agent.task.AgentImplementationTaskService taskService) {
         this.runRepository = runRepository;
         this.stepRepository = stepRepository;
         this.toolRegistry = toolRegistry;
@@ -63,6 +65,7 @@ public class AgentService {
         this.orchestratorService = orchestratorService;
         this.actionExecutionService = actionExecutionService;
         this.recommendationRepository = recommendationRepository;
+        this.taskService = taskService;
     }
 
     // =========================================================================
@@ -260,6 +263,55 @@ public class AgentService {
      */
     public com.messo.agent.dto.ActionExecutionResponse executeApprovedAction(Long runId, String adminEmail) {
         return actionExecutionService.executeApprovedAction(runId, adminEmail);
+    }
+
+    // =========================================================================
+    // IMPLEMENTATION TASKS (PHASE 7.2)
+    // =========================================================================
+
+    /**
+     * Lists all implementation tasks for an AgentRun.
+     */
+    @Transactional(readOnly = true)
+    public List<com.messo.agent.dto.AgentImplementationTaskResponse> getTasksForRun(Long runId) {
+        findRunOrThrow(runId);
+        return taskService.getTasksForRun(runId);
+    }
+
+    /**
+     * Creates an implementation task for an approved run.
+     */
+    public com.messo.agent.dto.AgentImplementationTaskResponse createTaskForRun(Long runId, String adminEmail) {
+        return taskService.createTaskForApprovedRun(runId, adminEmail);
+    }
+
+    /**
+     * Retrieves a specific implementation task by ID.
+     */
+    @Transactional(readOnly = true)
+    public com.messo.agent.dto.AgentImplementationTaskResponse getTask(Long taskId) {
+        return taskService.getTask(taskId);
+    }
+
+    /**
+     * Transitions an implementation task from OPEN to IN_PROGRESS.
+     */
+    public com.messo.agent.dto.AgentImplementationTaskResponse startTask(Long taskId, String adminEmail) {
+        return taskService.startTask(taskId, adminEmail);
+    }
+
+    /**
+     * Transitions an implementation task from IN_PROGRESS to COMPLETED.
+     */
+    public com.messo.agent.dto.AgentImplementationTaskResponse completeTask(Long taskId, String adminEmail) {
+        return taskService.completeTask(taskId, adminEmail);
+    }
+
+    /**
+     * Transitions an implementation task to CANCELLED.
+     */
+    public com.messo.agent.dto.AgentImplementationTaskResponse cancelTask(Long taskId, String adminEmail, String reason) {
+        return taskService.cancelTask(taskId, adminEmail, reason);
     }
 
     // =========================================================================

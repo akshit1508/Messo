@@ -3,30 +3,12 @@
 import React from "react";
 import { AgentStepResponse } from "@/types/agent";
 
+import { humanizeToolName, humanizeStatus } from "@/lib/agentDisplay";
+
 interface AgentTimelineProps {
   steps: AgentStepResponse[];
   currentStepName?: string | null;
   isRunning: boolean;
-}
-
-const TOOL_TITLE_MAP: Record<string, string> = {
-  get_recent_ratings: "Recent Food Ratings",
-  get_complaints: "Complaint Patterns",
-  get_poll_results: "Student Poll Results",
-  get_menu_history: "Menu Serving History",
-  run_root_cause: "Root Cause Diagnostic",
-  run_forecast: "Turnout Forecast",
-  run_simulation: "Menu Scenario Simulation",
-  create_recommendation: "Create Recommendation",
-  create_admin_task: "Create Admin Task",
-  send_notification: "Send Notification",
-};
-
-function formatToolTitle(toolName: string): string {
-  return (
-    TOOL_TITLE_MAP[toolName] ||
-    toolName.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
 }
 
 function formatSequence(num: number): string {
@@ -49,12 +31,12 @@ export function AgentTimeline({
   return (
     <div className="space-y-2.5">
       <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-        Investigation Sequence
+        Investigation sequence
       </div>
 
       <div className="space-y-2">
         {steps.map((step) => {
-          const title = formatToolTitle(step.toolName);
+          const title = humanizeToolName(step.toolName);
           const isCompleted = step.status === "COMPLETED";
           const isFailed = step.status === "FAILED";
 
@@ -92,15 +74,15 @@ export function AgentTimeline({
 
                 <div>
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
+                    className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide ${
                       isCompleted
                         ? "bg-slate-100 text-slate-700 border border-slate-200"
                         : isFailed
                         ? "bg-rose-50 text-rose-700 border border-rose-200"
-                        : "bg-blue-50 text-blue-700 border border-blue-200"
+                        : "bg-emerald-50 text-emerald-800 border border-emerald-200"
                     }`}
                   >
-                    {step.status}
+                    {humanizeStatus(step.status)}
                   </span>
                 </div>
               </div>
@@ -112,7 +94,10 @@ export function AgentTimeline({
                     <span>Technical Details</span>
                     <span className="text-[9px] group-open:rotate-180 transition-transform">▾</span>
                   </summary>
-                  <div className="mt-1.5 text-[11px] leading-relaxed">
+                  <div className="mt-1.5 text-[11px] leading-relaxed space-y-1">
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      Tool: {step.toolName}
+                    </div>
                     {step.outputSummary && (
                       <p className="text-slate-600 bg-slate-50 p-2 rounded border border-slate-200/60 font-mono text-[10px]">
                         {step.outputSummary}
@@ -140,15 +125,15 @@ export function AgentTimeline({
               <div>
                 <div className="font-medium text-slate-800">
                   {currentStepName
-                    ? formatToolTitle(currentStepName)
+                    ? humanizeToolName(currentStepName)
                     : "Executing step..."}
                 </div>
                 <div className="text-[11px] text-slate-400">In progress</div>
               </div>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-blue-50 text-blue-700 border border-blue-200">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide bg-blue-50 text-blue-700 border border-blue-200">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-              Running
+              Investigating
             </span>
           </div>
         )}

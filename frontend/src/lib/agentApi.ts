@@ -86,3 +86,71 @@ export async function getAgentRunRecommendations(
     }
   );
 }
+
+export async function getAgentRunTasks(
+  id: number
+): Promise<import("@/types/agent").AgentImplementationTaskResponse[]> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse[]>(
+    `/api/admin/agent/runs/${id}/tasks`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function createAgentRunTask(
+  id: number
+): Promise<import("@/types/agent").AgentImplementationTaskResponse> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse>(
+    `/api/admin/agent/runs/${id}/tasks`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function getAgentTask(
+  taskId: number
+): Promise<import("@/types/agent").AgentImplementationTaskResponse> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse>(
+    `/api/admin/agent/tasks/${taskId}`,
+    {
+      method: "GET",
+    }
+  );
+}
+
+export async function startAgentTask(
+  taskId: number
+): Promise<import("@/types/agent").AgentImplementationTaskResponse> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse>(
+    `/api/admin/agent/tasks/${taskId}/start`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function completeAgentTask(
+  taskId: number
+): Promise<import("@/types/agent").AgentImplementationTaskResponse> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse>(
+    `/api/admin/agent/tasks/${taskId}/complete`,
+    {
+      method: "POST",
+    }
+  );
+}
+
+export async function cancelAgentTask(
+  taskId: number,
+  reason?: string
+): Promise<import("@/types/agent").AgentImplementationTaskResponse> {
+  return request<import("@/types/agent").AgentImplementationTaskResponse>(
+    `/api/admin/agent/tasks/${taskId}/cancel`,
+    {
+      method: "POST",
+      body: reason ? JSON.stringify({ reason }) : undefined,
+    }
+  );
+}

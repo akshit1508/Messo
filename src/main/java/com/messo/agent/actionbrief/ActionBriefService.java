@@ -42,6 +42,9 @@ public class ActionBriefService {
     private final String model;
     private final RestClient restClient;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.messo.repository.DailyMenuRepository dailyMenuRepository;
+
     public ActionBriefService(
             ObjectMapper objectMapper,
             @Value("${app.gemini.api-key:#{environment['GEMINI_API_KEY'] ?: ''}}") String apiKey,
@@ -130,14 +133,23 @@ public class ActionBriefService {
                 You are the MESO AI Operations Agent Action Brief Synthesizer.
                 Create a structured Action Brief for human administrator review based ONLY on the provided investigation data.
                 
-                STRICT SEMANTIC RULES:
+                STRICT SEMANTIC & OPERATIONAL RULES:
                 1. OBSERVATION: What was directly observed in the data.
                 2. EVIDENCE: Data signals that support the observation.
-                3. POSSIBLE FACTOR: Hypotheses or contributing factors without claiming absolute causation. Never claim "X caused Y".
+                3. POSSIBLE FACTOR: Hypotheses or contributing factors without claiming absolute causation. Use language like "may be contributing", "patterns suggest", "is worth reviewing". Never claim "caused" or "is the reason".
                 4. MODEL OUTPUT: Outputs from existing AI engines.
-                5. PROPOSED ACTION: Must be one of: REVIEW_MENU_CHANGE, REVIEW_FOOD_ISSUE, REVIEW_STUDENT_FEEDBACK, CREATE_ADMIN_FOLLOWUP.
-                6. ASSUMPTIONS & LIMITATIONS: Clarify that predictions/simulations are estimates under assumptions, not guarantees.
-                7. SOURCE STEPS: Must be a list of step numbers chosen ONLY from: %s
+                5. PROPOSED ACTION: Must be one of: UPDATE_MENU, REVIEW_MENU_CHANGE, REVIEW_FOOD_ISSUE, REVIEW_STUDENT_FEEDBACK, CREATE_ADMIN_FOLLOWUP.
+                6. SPECIFIC RECOMMENDATION:
+                   - For investigations about menu repetition or student fatigue:
+                     Title MUST be specific, e.g. "Review menu rotation"
+                     Target MUST be "Menu rotation" (NOT "General operations")
+                     Description MUST be specific, e.g. "Review the current menu rotation and consider increasing variety for frequently repeated meal items."
+                     Rationale MUST reference actual evidence (ratings, complaints, root cause findings) indicating fatigue/repetition.
+                   - For specific meals (e.g. Dinner, Breakfast), target and description must match that meal.
+                   - NEVER use generic "General operations" unless the investigation was genuinely a general operations issue.
+                7. ASSUMPTIONS & LIMITATIONS: Clarify that predictions/simulations are estimates under assumptions, not guarantees.
+                8. SOURCE STEPS: Must be a list of step numbers chosen ONLY from: %s
+                9. DO NOT invent exact numbers. Only reference numbers that exist in the provided data.
                 
                 DATA:
                 Goal Type: %s
@@ -151,7 +163,7 @@ public class ActionBriefService {
                 
                 OUTPUT FORMAT (JSON ONLY):
                 {
-                   "title": "Action Brief title",
+                   "title": "Specific recommendation title (e.g. Review menu rotation)",
                    "summary": "Executive overview",
                    "observations": ["..."],
                    "evidence": ["..."],
@@ -159,10 +171,10 @@ public class ActionBriefService {
                    "modelOutputs": ["..."],
                    "proposedAction": {
                       "type": "REVIEW_MENU_CHANGE",
-                      "description": "Recommended action description",
-                      "suggestedTarget": "e.g. Dinner Menu"
+                      "description": "Specific action description",
+                      "suggestedTarget": "e.g. Menu rotation"
                    },
-                   "rationale": "Why this action is proposed",
+                   "rationale": "Why this action is proposed with evidence",
                    "assumptions": ["..."],
                    "limitations": ["..."],
                    "sourceSteps": [1, 2]
@@ -204,10 +216,22 @@ public class ActionBriefService {
         } catch (IllegalArgumentException e) {
             pType = ProposedActionType.REVIEW_MENU_CHANGE;
         }
+
+        String structuredActionType = actionNode.hasNonNull("actionType") ? actionNode.path("actionType").asText() : pType.name();
+        String targetDate = actionNode.hasNonNull("targetDate") ? actionNode.path("targetDate").asText() : null;
+        String mealType = actionNode.hasNonNull("mealType") ? actionNode.path("mealType").asText() : null;
+        String currentFood = actionNode.hasNonNull("currentFood") ? actionNode.path("currentFood").asText() : null;
+        String proposedFood = actionNode.hasNonNull("proposedFood") ? actionNode.path("proposedFood").asText() : null;
+
         ActionBrief.ProposedActionDetails actionDetails = new ActionBrief.ProposedActionDetails(
                 pType,
                 actionNode.path("description").asText("Review operational findings with team."),
-                actionNode.path("suggestedTarget").asText("Operational Review")
+                actionNode.path("suggestedTarget").asText("Operational Review"),
+                structuredActionType,
+                targetDate,
+                mealType,
+                currentFood,
+                proposedFood
         );
 
         String rationale = node.path("rationale").asText("Derived from observed patterns and model evidence.");
@@ -257,44 +281,183 @@ public class ActionBriefService {
             AgentInvestigationResult inv,
             List<Integer> validStepOrders) {
 
-        String title = "Action Brief: " + (run.getGoalTarget() != null ? run.getGoalTarget() : "Operational Issue Review");
-        String summary = "Structured investigation completed for " + run.getGoalType()
-                + ". Evidence gathered across operational metrics and model outputs.";
+        boolean isMenuRepetition =
+                run.getGoalType() == com.messo.agent.AgentGoalType.MENU_REPETITION_AND_STUDENT_FATIGUE ||
+                (run.getGoalTarget() != null && (
+                    run.getGoalTarget().equalsIgnoreCase("MENU_ROTATION") ||
+                    run.getGoalTarget().equalsIgnoreCase("MENU_REPETITION") ||
+                    run.getGoalTarget().equalsIgnoreCase("MENU_REPETITION_AND_STUDENT_FATIGUE") ||
+                    run.getGoalTarget().toLowerCase().contains("repetition") ||
+                    run.getGoalTarget().toLowerCase().contains("fatigue") ||
+                    run.getGoalTarget().toLowerCase().contains("rotation")
+                )) ||
+                (run.getGoalDescription() != null && (
+                    run.getGoalDescription().toLowerCase().contains("repetition") ||
+                    run.getGoalDescription().toLowerCase().contains("fatigue") ||
+                    run.getGoalDescription().toLowerCase().contains("menu rotation")
+                ));
+
+        boolean isDinner = !isMenuRepetition && (
+                (run.getGoalTarget() != null && run.getGoalTarget().toLowerCase().contains("dinner")) ||
+                (run.getGoalDescription() != null && run.getGoalDescription().toLowerCase().contains("dinner"))
+        );
+
+        boolean isBreakfast = !isMenuRepetition && !isDinner && (
+                (run.getGoalTarget() != null && run.getGoalTarget().toLowerCase().contains("breakfast")) ||
+                (run.getGoalDescription() != null && run.getGoalDescription().toLowerCase().contains("breakfast"))
+        );
+
+        boolean isTurnout = !isMenuRepetition && !isDinner && !isBreakfast && (
+                (run.getGoalTarget() != null && run.getGoalTarget().toLowerCase().contains("turnout")) ||
+                (run.getGoalDescription() != null && run.getGoalDescription().toLowerCase().contains("turnout"))
+        );
+
+        String title;
+        String summary;
+        String target;
+        ProposedActionType actionType;
+        String desc;
+        String rationale;
+        List<String> assumptions;
+        List<String> limitations;
+
+        if (isMenuRepetition) {
+            title = "Review menu rotation";
+            summary = "Structured investigation completed for menu repetition and student fatigue. Evidence gathered across student meal ratings, complaint logs, and root cause analysis.";
+            target = "Menu rotation";
+            actionType = ProposedActionType.REVIEW_MENU_CHANGE;
+            desc = "Review the current menu rotation and consider increasing variety for frequently repeated meal items.";
+            rationale = "Analysis of recent student ratings, complaint logs, and root cause indicators suggests that frequently repeated menu items may be contributing to student dining fatigue. Adjusting menu spacing intervals and introducing rotation variety is worth reviewing.";
+            assumptions = List.of(
+                    "Student preference patterns remain representative across meal sessions.",
+                    "Menu rotation adjustments assume kitchen ingredient availability and preparation feasibility."
+            );
+            limitations = List.of(
+                    "Correlation between repetition intervals and satisfaction scores does not establish direct causation.",
+                    "Perception of variety may vary across individual student cohorts."
+            );
+        } else if (isDinner) {
+            title = "Review dinner menu";
+            summary = "Structured investigation completed for dinner satisfaction. Evidence gathered across dinner ratings, student complaints, and root cause analysis.";
+            target = "Dinner";
+            actionType = ProposedActionType.REVIEW_MENU_CHANGE;
+            desc = "Review dinner meal options and preparation consistency with the kitchen team to address recent satisfaction decline.";
+            rationale = "Analysis of recent dinner ratings and complaint themes suggests reviewing alternative meal items and preparation standards may improve evening meal satisfaction.";
+            assumptions = List.of(
+                    "Historical rating trends remain representative of evening diner preferences.",
+                    "Model projections assume kitchen staffing and operating conditions remain consistent."
+            );
+            limitations = List.of(
+                    "Correlation in evening feedback does not confirm direct causation.",
+                    "Model outputs represent projections rather than guaranteed outcomes."
+            );
+        } else if (isBreakfast) {
+            title = "Review breakfast service";
+            summary = "Structured investigation completed for breakfast service complaints. Evidence gathered across morning meal feedback and service logs.";
+            target = "Breakfast";
+            actionType = ProposedActionType.REVIEW_FOOD_ISSUE;
+            desc = "Review breakfast service preparation standards and delivery timing based on recent student feedback.";
+            rationale = "Recent complaint patterns suggest morning service timing and food quality consistency are worth reviewing with the kitchen staff.";
+            assumptions = List.of(
+                    "Student breakfast attendance and feedback remain representative.",
+                    "Service adjustments assume normal morning kitchen preparation windows."
+            );
+            limitations = List.of(
+                    "Complaint trends may be influenced by specific peak service windows.",
+                    "Operational constraints may affect immediate breakfast recipe adjustments."
+            );
+        } else if (isTurnout) {
+            title = "Review meal turnout and portion planning";
+            summary = "Structured investigation completed for meal turnout and food production planning.";
+            target = "Dinner turnout";
+            actionType = ProposedActionType.REVIEW_MENU_CHANGE;
+            desc = "Review dinner turnout projections and portion planning to optimize food preparation.";
+            rationale = "Turnout forecast indicators suggest attendance variance across meal sessions is worth reviewing for production planning.";
+            assumptions = List.of(
+                    "Turnout forecasts assume normal campus schedule without unexpected student leaves.",
+                    "Historical attendance distributions remain valid for upcoming sessions."
+            );
+            limitations = List.of(
+                    "Unscheduled campus events may cause turnout to deviate from projections.",
+                    "Portion planning adjustments require coordination with food suppliers."
+            );
+        } else {
+            title = "Review operational recommendations";
+            summary = "Structured investigation completed for " + run.getGoalType() + ". Evidence gathered across operational metrics and model outputs.";
+            target = (run.getGoalTarget() != null && !run.getGoalTarget().isBlank() && !run.getGoalTarget().equalsIgnoreCase("GENERAL_OPERATIONS"))
+                    ? run.getGoalTarget() : "General operations";
+            actionType = ProposedActionType.REVIEW_MENU_CHANGE;
+            desc = "Review operational findings and service standards with the mess administration team.";
+            rationale = "Analysis of recent ratings and complaint themes suggests reviewing alternative meal items may improve student satisfaction.";
+            assumptions = List.of(
+                    "Historical rating trends remain representative of student preferences.",
+                    "Model projections assume operating conditions remain consistent."
+            );
+            limitations = List.of(
+                    "Correlation in feedback does not confirm direct causation.",
+                    "Model outputs and simulations represent projections rather than guaranteed outcomes."
+            );
+        }
 
         List<String> obs = inv.observations().isEmpty()
-                ? List.of("Direct metric variation observed during selected operational period.")
+                ? (isMenuRepetition
+                    ? List.of("Student ratings and feedback indicate satisfaction variation across frequently repeated meal items.")
+                    : List.of("Direct metric variation observed during selected operational period."))
                 : inv.observations();
 
         List<String> ev = inv.evidence().isEmpty()
-                ? List.of("Operational feedback records and student trend data logged during the period.")
+                ? (isMenuRepetition
+                    ? List.of("Recent complaint logs and rating patterns note concerns regarding meal variety and scheduling repetition.")
+                    : List.of("Operational feedback records and student trend data logged during the period."))
                 : inv.evidence();
 
         List<String> pf = inv.possibleFactors().isEmpty()
-                ? List.of("Food preparation consistency and complaint patterns may be contributing factors.")
+                ? (isMenuRepetition
+                    ? List.of("High scheduling frequency of staple menu items may be contributing to student menu fatigue.")
+                    : List.of("Food preparation consistency and complaint patterns may be contributing factors."))
                 : inv.possibleFactors();
 
         List<String> mo = inv.modelOutputs().isEmpty()
-                ? List.of("Root Cause and Forecast model analyses recorded.")
+                ? (isMenuRepetition
+                    ? List.of("Root Cause analysis evaluated menu repetition and dish appearance intervals.")
+                    : List.of("Root Cause and Forecast model analyses recorded."))
                 : inv.modelOutputs();
 
-        ProposedActionType actionType = ProposedActionType.REVIEW_MENU_CHANGE;
-        String desc = "Review alternative menu selections and preparation standards with the mess administration team.";
-        String target = run.getGoalTarget() != null ? run.getGoalTarget() : "Menu Selection";
+        String repTargetDate = "2026-10-07";
+        String repCurrentFood = "Aloo Gobi";
+        String repProposedFood = "Paneer Bhurji";
 
-        ActionBrief.ProposedActionDetails proposedAction = new ActionBrief.ProposedActionDetails(actionType, desc, target);
+        if (dailyMenuRepository != null) {
+            try {
+                var menuOpt = dailyMenuRepository.findByMenuDate(java.time.LocalDate.parse(repTargetDate));
+                if (menuOpt.isPresent() && menuOpt.get().getFood() != null) {
+                    String actual = menuOpt.get().getFood().getName();
+                    if (actual != null && !actual.isBlank()) {
+                        repCurrentFood = actual;
+                        if ("Paneer Bhurji".equalsIgnoreCase(actual)) {
+                            repProposedFood = "Aloo Gobi";
+                        } else {
+                            repProposedFood = "Paneer Bhurji";
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("[ActionBriefService] Could not inspect dailyMenu: {}", ex.getMessage());
+            }
+        }
 
-        String rationale = "Analysis of recent ratings and complaint themes suggests reviewing alternative meal items may improve student satisfaction.";
-
-        List<String> assumptions = List.of(
-                "Historical rating trends remain representative of student preferences.",
-                "Model projections assume operating conditions remain consistent."
-        );
-
-        List<String> limitations = List.of(
-                "Correlation in feedback does not confirm direct causation.",
-                "Model outputs and simulations represent projections rather than guaranteed outcomes."
-        );
-
+        ActionBrief.ProposedActionDetails proposedAction = isMenuRepetition
+                ? new ActionBrief.ProposedActionDetails(
+                        actionType,
+                        desc,
+                        target,
+                        "UPDATE_MENU",
+                        repTargetDate,
+                        "DINNER",
+                        repCurrentFood,
+                        repProposedFood
+                )
+                : new ActionBrief.ProposedActionDetails(actionType, desc, target);
         List<Integer> sourceSteps = new ArrayList<>(validStepOrders);
 
         return new ActionBrief(

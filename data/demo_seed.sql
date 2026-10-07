@@ -57,6 +57,7 @@ INSERT INTO foods (name, meal_type) SELECT 'Kheer', 'Dinner' WHERE NOT EXISTS (S
 INSERT INTO foods (name, meal_type) SELECT 'Sooji Halwa', 'Breakfast' WHERE NOT EXISTS (SELECT 1 FROM foods WHERE LOWER(name) = LOWER('Sooji Halwa'));
 INSERT INTO foods (name, meal_type) SELECT 'Moong Dal Halwa', 'Dinner' WHERE NOT EXISTS (SELECT 1 FROM foods WHERE LOWER(name) = LOWER('Moong Dal Halwa'));
 INSERT INTO foods (name, meal_type) SELECT 'Rasgulla', 'Lunch' WHERE NOT EXISTS (SELECT 1 FROM foods WHERE LOWER(name) = LOWER('Rasgulla'));
+INSERT INTO foods (name, meal_type) SELECT 'Paneer Bhurji', 'Dinner' WHERE NOT EXISTS (SELECT 1 FROM foods WHERE LOWER(name) = LOWER('Paneer Bhurji'));
 
 -- 3. INSERT 250 SYNTHETIC INDIAN STUDENTS
 INSERT INTO users (email, password, role, enabled) VALUES
@@ -937,6 +938,8 @@ INSERT INTO daily_menu (menu_date, food_id) VALUES
   ('2026-09-22', (SELECT id FROM foods WHERE name = 'Bhindi Masala' LIMIT 1)),
   ('2026-09-23', (SELECT id FROM foods WHERE name = 'Dal Fry' LIMIT 1)),
   ('2026-09-24', (SELECT id FROM foods WHERE name = 'Shahi Paneer' LIMIT 1));
+
+INSERT INTO daily_menu (menu_date, food_id) SELECT '2026-10-07', (SELECT id FROM foods WHERE name = 'Aloo Gobi' LIMIT 1) WHERE NOT EXISTS (SELECT 1 FROM daily_menu WHERE menu_date = '2026-10-07');
 
 -- 5. INSERT ~36,000 RATINGS (FOOD REVIEWS)
 INSERT INTO food_reviews (rating, review_date, food_id, user_id) VALUES

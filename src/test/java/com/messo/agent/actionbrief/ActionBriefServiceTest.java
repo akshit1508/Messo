@@ -105,4 +105,70 @@ class ActionBriefServiceTest {
         assertEquals(brief.proposedAction().type(), deserialized.proposedAction().type());
         assertEquals("WAITING_FOR_APPROVAL", deserialized.status());
     }
+
+    @Test
+    void generateDeterministicBrief_whenMenuRepetitionGoal_generatesSpecificMenuRotationRecommendation() {
+        AgentRun run = new AgentRun();
+        run.setGoalType(AgentGoalType.MENU_REPETITION_AND_STUDENT_FATIGUE);
+        run.setGoalTarget("MENU_ROTATION");
+        run.setGoalDescription("Investigate whether frequent menu repetition is contributing to student dining fatigue");
+
+        AgentInvestigationResult inv = new AgentInvestigationResult(
+                10L,
+                "MENU_REPETITION_AND_STUDENT_FATIGUE",
+                run.getGoalDescription(),
+                List.of("Student ratings show satisfaction variation across frequently served meal items."),
+                List.of("Student complaints reflect recurring concerns regarding dish variety and menu rotation spacing."),
+                List.of("High scheduling frequency of staple menu items may be contributing to student menu fatigue."),
+                List.of("Root cause analysis identified Menu Repetition Fatigue (p < 0.05)."),
+                "Synthesized menu repetition and fatigue evidence.",
+                3,
+                LocalDateTime.now().toString()
+        );
+
+        ActionBrief brief = actionBriefService.generateDeterministicBrief(run, inv, List.of(1, 2, 3));
+
+        assertNotNull(brief);
+        assertEquals("Review menu rotation", brief.title());
+        assertEquals("Menu rotation", brief.proposedAction().suggestedTarget());
+        assertEquals(ProposedActionType.REVIEW_MENU_CHANGE, brief.proposedAction().type());
+        assertEquals("Review the current menu rotation and consider increasing variety for frequently repeated meal items.",
+                brief.proposedAction().description());
+        assertTrue(brief.rationale().toLowerCase().contains("repetition") || brief.rationale().toLowerCase().contains("fatigue"));
+        assertTrue(brief.summary().toLowerCase().contains("menu repetition"));
+
+        // Epistemic humility check: never claim correlation as causation
+        assertFalse(brief.rationale().contains(" caused "));
+        assertFalse(brief.rationale().contains(" is the reason"));
+    }
+
+    @Test
+    void generateDeterministicBrief_whenDinnerSatisfactionGoal_generatesSpecificDinnerRecommendation() {
+        AgentRun run = new AgentRun();
+        run.setGoalType(AgentGoalType.INVESTIGATE_RATING_DROP);
+        run.setGoalTarget("DINNER_SATISFACTION");
+        run.setGoalDescription("Investigate why dinner satisfaction dropped this week");
+
+        AgentInvestigationResult inv = new AgentInvestigationResult(
+                11L,
+                "INVESTIGATE_RATING_DROP",
+                run.getGoalDescription(),
+                List.of("Dinner ratings dropped from 3.8 to 3.1"),
+                List.of("12 dinner complaints logged regarding food temperature"),
+                List.of("Gravy consistency in evening meals may be a contributing factor"),
+                List.of("Root cause analysis completed"),
+                "Synthesized dinner ratings evidence.",
+                3,
+                LocalDateTime.now().toString()
+        );
+
+        ActionBrief brief = actionBriefService.generateDeterministicBrief(run, inv, List.of(1, 2, 3));
+
+        assertNotNull(brief);
+        assertEquals("Review dinner menu", brief.title());
+        assertEquals("Dinner", brief.proposedAction().suggestedTarget());
+        assertEquals("Review dinner meal options and preparation consistency with the kitchen team to address recent satisfaction decline.",
+                brief.proposedAction().description());
+        assertTrue(brief.rationale().toLowerCase().contains("dinner"));
+    }
 }

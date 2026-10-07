@@ -177,6 +177,72 @@ public class AgentController {
     }
 
     // =========================================================================
+    // Implementation Tasks (Phase 7.2)
+    // =========================================================================
+
+    /**
+     * Returns all implementation tasks created for an AgentRun.
+     */
+    @GetMapping("/runs/{id}/tasks")
+    public ResponseEntity<List<com.messo.agent.dto.AgentImplementationTaskResponse>> getRunTasks(@PathVariable Long id) {
+        return ResponseEntity.ok(agentService.getTasksForRun(id));
+    }
+
+    /**
+     * Creates an implementation task for an approved run (idempotent).
+     */
+    @PostMapping("/runs/{id}/tasks")
+    public ResponseEntity<com.messo.agent.dto.AgentImplementationTaskResponse> createRunTask(
+            @PathVariable Long id,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.status(HttpStatus.CREATED).body(agentService.createTaskForRun(id, adminEmail));
+    }
+
+    /**
+     * Returns a specific implementation task by ID.
+     */
+    @GetMapping("/tasks/{taskId}")
+    public ResponseEntity<com.messo.agent.dto.AgentImplementationTaskResponse> getTask(@PathVariable Long taskId) {
+        return ResponseEntity.ok(agentService.getTask(taskId));
+    }
+
+    /**
+     * Starts an implementation task (OPEN -> IN_PROGRESS).
+     */
+    @PostMapping("/tasks/{taskId}/start")
+    public ResponseEntity<com.messo.agent.dto.AgentImplementationTaskResponse> startTask(
+            @PathVariable Long taskId,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(agentService.startTask(taskId, adminEmail));
+    }
+
+    /**
+     * Marks an implementation task as COMPLETED.
+     */
+    @PostMapping("/tasks/{taskId}/complete")
+    public ResponseEntity<com.messo.agent.dto.AgentImplementationTaskResponse> completeTask(
+            @PathVariable Long taskId,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        return ResponseEntity.ok(agentService.completeTask(taskId, adminEmail));
+    }
+
+    /**
+     * Cancels an implementation task (OPEN/IN_PROGRESS -> CANCELLED).
+     */
+    @PostMapping("/tasks/{taskId}/cancel")
+    public ResponseEntity<com.messo.agent.dto.AgentImplementationTaskResponse> cancelTask(
+            @PathVariable Long taskId,
+            @RequestBody(required = false) java.util.Map<String, String> body,
+            Authentication authentication) {
+        String adminEmail = authentication.getName();
+        String reason = (body != null) ? body.get("reason") : null;
+        return ResponseEntity.ok(agentService.cancelTask(taskId, adminEmail, reason));
+    }
+
+    // =========================================================================
     // Tool Registry
     // =========================================================================
 

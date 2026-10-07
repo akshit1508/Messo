@@ -1174,69 +1174,58 @@ export default function AdminIntelligencePage() {
       {/* Page Header */}
       <PageHeader
         title="Operational Intelligence"
-        description="Review student feedback trends, forecast upcoming dish ratings, and preview menu adjustments before serving."
-        badge={
-          <div className="flex items-center gap-2">
-            <Badge variant="default" size="sm" dot>
-              Live Gateway Connected
-            </Badge>
-            <Badge variant="success" size="sm">
-              Live Data Protected
-            </Badge>
-          </div>
-        }
+        description="Understand recent feedback, anticipate upcoming ratings, and review possible operational actions."
       />
 
-      {/* Portfolio / Demo Friendly Overview Banner */}
-      {/* Engine Navigation Tabs */}
+      {/* Primary Section Navigation */}
       <div className="border-b border-slate-200">
-        <nav className="flex space-x-8" aria-label="Engines">
+        <nav className="flex space-x-6 sm:space-x-8 overflow-x-auto" aria-label="Operational Sections">
           <button
+            type="button"
             onClick={() => setActiveTab("root_cause")}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
               activeTab === "root_cause"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-emerald-800 text-emerald-950 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-            1. Root Cause Engine (WHY?)
+            Insights
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab("forecast")}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
               activeTab === "forecast"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-emerald-800 text-emerald-950 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            2. Forecast Engine (WHAT NEXT?)
+            Forecast
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab("simulation")}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
               activeTab === "simulation"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-emerald-800 text-emerald-950 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-            3. Simulation Engine (WHAT IF?)
+            Simulation
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab("agent")}
-            className={`py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+            className={`py-3 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
               activeTab === "agent"
-                ? "border-blue-600 text-blue-600 font-semibold"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+                ? "border-emerald-800 text-emerald-950 font-semibold"
+                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-            4. Operations Agent (ACTION PROPOSAL)
+            Decision Desk
           </button>
         </nav>
       </div>

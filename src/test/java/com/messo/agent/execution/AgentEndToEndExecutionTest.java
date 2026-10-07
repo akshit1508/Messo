@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.messo.agent.*;
 import com.messo.agent.actionbrief.ActionBrief;
 import com.messo.agent.actionbrief.ActionBriefService;
+import com.messo.agent.actionbrief.ProposedActionType;
 import com.messo.agent.dto.ActionExecutionResponse;
 import com.messo.agent.dto.AgentRunResponse;
 import com.messo.agent.planner.AgentOrchestratorService;
@@ -65,6 +66,15 @@ class AgentEndToEndExecutionTest {
     @Mock
     private AgentRecommendationRepository recommendationRepository;
 
+    @Mock
+    private com.messo.agent.task.AgentImplementationTaskService taskService;
+
+    @Mock
+    private com.messo.repository.DailyMenuRepository dailyMenuRepository;
+
+    @Mock
+    private com.messo.repository.FoodRepository foodRepository;
+
     private ObjectMapper objectMapper;
     private ActionBriefService actionBriefService;
     private AgentOrchestratorService orchestratorService;
@@ -79,11 +89,11 @@ class AgentEndToEndExecutionTest {
                 runRepository, stepRepository, toolExecutor, plannerEngine, objectMapper, actionBriefService
         );
         actionExecutionService = new ActionExecutionService(
-                runRepository, executionRepository, recommendationRepository, objectMapper
+                runRepository, executionRepository, recommendationRepository, objectMapper, taskService, dailyMenuRepository, foodRepository
         );
         AgentToolRegistry toolRegistry = new AgentToolRegistry();
         agentService = new AgentService(
-                runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService, recommendationRepository
+                runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService, recommendationRepository, taskService
         );
     }
 
@@ -305,6 +315,122 @@ class AgentEndToEndExecutionTest {
         assertEquals("executor@messo.com", capturedExec.getExecutedBy());
         assertEquals(ActionExecutionStatus.SUCCESS, capturedExec.getStatus());
         assertEquals("AgentRecommendation#901", capturedExec.getTargetReference());
+    }
+
+    @Test
+    void phase8_controlledExecutionWorkflow_fromApproval_toDatabaseMutation_toReadyForVerification_toHumanCompletion() throws Exception {
+        // 1. Setup Approved Run with UPDATE_MENU ActionBrief
+        AgentRun run = new AgentRun();
+        setField(run, "id", 400L);
+        run.setStatus(AgentRunStatus.APPROVED);
+        run.setGoalType(AgentGoalType.MENU_REPETITION_AND_STUDENT_FATIGUE);
+
+        ActionBrief.ProposedActionDetails actionDetails = new ActionBrief.ProposedActionDetails(
+                ProposedActionType.UPDATE_MENU,
+                "Replace Aloo Gobi with Paneer Bhurji for Wednesday dinner",
+                "Menu rotation",
+                "UPDATE_MENU",
+                "2026-10-07",
+                "DINNER",
+                "Aloo Gobi",
+                "Paneer Bhurji"
+        );
+        ActionBrief brief = new ActionBrief(
+                "Review menu rotation",
+                "Fatigue analysis",
+                List.of("Repetition observed"),
+                List.of("Student ratings dropped"),
+                List.of("Menu fatigue factor"),
+                List.of("Root cause model output"),
+                actionDetails,
+                "Adjusting rotation improves variety",
+                List.of("Kitchen staffing available"),
+                List.of("Cohort perception varies"),
+                List.of(1, 2),
+                LocalDateTime.now().toString(),
+                "APPROVED"
+        );
+        run.setActionBrief(objectMapper.writeValueAsString(brief));
+
+        when(runRepository.findById(400L)).thenReturn(Optional.of(run));
+        when(executionRepository.findByAgentRunId(400L)).thenReturn(Optional.empty());
+
+        com.messo.model.Food alooGobi = new com.messo.model.Food();
+        alooGobi.setName("Aloo Gobi");
+        com.messo.model.Food paneerBhurji = new com.messo.model.Food();
+        paneerBhurji.setName("Paneer Bhurji");
+
+        com.messo.model.DailyMenu dailyMenu = new com.messo.model.DailyMenu();
+        dailyMenu.setId(700L);
+        dailyMenu.setMenuDate(java.time.LocalDate.of(2026, 10, 7));
+        dailyMenu.setFood(alooGobi);
+
+        when(dailyMenuRepository.findByMenuDate(java.time.LocalDate.of(2026, 10, 7))).thenReturn(Optional.of(dailyMenu));
+        when(foodRepository.findByNameIgnoreCase("Paneer Bhurji")).thenReturn(Optional.of(paneerBhurji));
+        when(dailyMenuRepository.save(any(com.messo.model.DailyMenu.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(recommendationRepository.save(any(AgentRecommendation.class))).thenAnswer(inv -> {
+            AgentRecommendation rec = inv.getArgument(0);
+            setField(rec, "id", 401L);
+            return rec;
+        });
+        when(executionRepository.save(any(AgentActionExecution.class))).thenAnswer(inv -> {
+            AgentActionExecution exec = inv.getArgument(0);
+            setField(exec, "id", 402L);
+            return exec;
+        });
+
+        var taskResponse = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                450L, 400L, 401L, "Review menu rotation", "Replace Aloo Gobi with Paneer Bhurji",
+                "Reason", "Menu rotation", com.messo.agent.task.AgentImplementationTaskStatus.OPEN,
+                "MESO AI Operations Agent", LocalDateTime.now(), null, null
+        );
+        when(taskService.createTaskForApprovedRun(400L, "admin@messo.com")).thenReturn(taskResponse);
+
+        var readyTaskResponse = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                450L, 400L, 401L, "Review menu rotation", "Replace Aloo Gobi with Paneer Bhurji",
+                "Reason", "Menu rotation", com.messo.agent.task.AgentImplementationTaskStatus.READY_FOR_VERIFICATION,
+                "MESO AI Operations Agent", LocalDateTime.now(), null, null,
+                "UPDATE_MENU", java.time.LocalDate.of(2026, 10, 7), "DINNER", "Aloo Gobi", "Paneer Bhurji",
+                LocalDateTime.now(), "MESO AI Operations Agent"
+        );
+        when(taskService.recordActionExecutionOnTask(
+                eq(450L), eq("UPDATE_MENU"), eq("Aloo Gobi"), eq("Paneer Bhurji"),
+                eq(java.time.LocalDate.of(2026, 10, 7)), eq("DINNER"), anyString()
+        )).thenReturn(readyTaskResponse);
+
+        // 2. Execute approved action
+        ActionExecutionResponse execResp = agentService.executeApprovedAction(400L, "admin@messo.com");
+
+        assertNotNull(execResp);
+        assertEquals(AgentRunStatus.COMPLETED, execResp.status());
+        assertEquals("UPDATE_MENU", execResp.actionType());
+        assertEquals(ActionExecutionStatus.SUCCESS, execResp.executionStatus());
+        assertTrue(execResp.summary().contains("The approved menu change was applied to the operational database"));
+
+        // 3. Verify actual operational change: daily_menu food is now Paneer Bhurji
+        assertEquals("Paneer Bhurji", dailyMenu.getFood().getName());
+        verify(dailyMenuRepository, times(1)).save(dailyMenu);
+
+        // 4. Verify Implementation Task was NOT auto-completed, but moved to READY_FOR_VERIFICATION
+        assertEquals("READY_FOR_VERIFICATION", execResp.result().get("taskStatus"));
+        assertEquals("Aloo Gobi", execResp.result().get("beforeValue"));
+        assertEquals("Paneer Bhurji", execResp.result().get("afterValue"));
+
+        // 5. Human administrator completes the task
+        var completedTaskResponse = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                450L, 400L, 401L, "Review menu rotation", "Replace Aloo Gobi with Paneer Bhurji",
+                "Reason", "Menu rotation", com.messo.agent.task.AgentImplementationTaskStatus.COMPLETED,
+                "MESO AI Operations Agent", LocalDateTime.now(), "admin@messo.com", LocalDateTime.now(),
+                "UPDATE_MENU", java.time.LocalDate.of(2026, 10, 7), "DINNER", "Aloo Gobi", "Paneer Bhurji",
+                LocalDateTime.now(), "MESO AI Operations Agent"
+        );
+        when(taskService.completeTask(450L, "admin@messo.com")).thenReturn(completedTaskResponse);
+
+        var finalTask = agentService.completeTask(450L, "admin@messo.com");
+        assertNotNull(finalTask);
+        assertEquals(com.messo.agent.task.AgentImplementationTaskStatus.COMPLETED, finalTask.status());
+        assertEquals("admin@messo.com", finalTask.completedBy());
     }
 
     private void setField(Object target, String fieldName, Object value) {

@@ -52,13 +52,16 @@ class AgentServiceTest {
     @Mock
     private com.messo.agent.recommendation.AgentRecommendationRepository recommendationRepository;
 
+    @Mock
+    private com.messo.agent.task.AgentImplementationTaskService taskService;
+
     private AgentToolRegistry toolRegistry;
     private AgentService agentService;
 
     @BeforeEach
     void setUp() {
         toolRegistry = new AgentToolRegistry();
-        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService, recommendationRepository);
+        agentService = new AgentService(runRepository, stepRepository, toolRegistry, toolExecutor, orchestratorService, actionExecutionService, recommendationRepository, taskService);
     }
 
     // =========================================================================

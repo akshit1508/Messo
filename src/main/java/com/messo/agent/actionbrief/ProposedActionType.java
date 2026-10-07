@@ -25,5 +25,11 @@ public enum ProposedActionType {
     /**
      * Recommends creating an administrative follow-up task for cafeteria staff.
      */
-    CREATE_ADMIN_FOLLOWUP
+    CREATE_ADMIN_FOLLOWUP,
+
+    /**
+     * Controlled operational menu modification (Phase 8).
+     * Replaces an approved food item on a specific date and meal after human approval.
+     */
+    UPDATE_MENU
 }

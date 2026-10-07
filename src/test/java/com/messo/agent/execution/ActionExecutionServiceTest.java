@@ -39,6 +39,15 @@ class ActionExecutionServiceTest {
     @Mock
     private AgentRecommendationRepository recommendationRepository;
 
+    @Mock
+    private com.messo.agent.task.AgentImplementationTaskService taskService;
+
+    @Mock
+    private com.messo.repository.DailyMenuRepository dailyMenuRepository;
+
+    @Mock
+    private com.messo.repository.FoodRepository foodRepository;
+
     private ObjectMapper objectMapper;
     private ActionExecutionService executionService;
 
@@ -46,7 +55,7 @@ class ActionExecutionServiceTest {
     void setUp() {
         objectMapper = new ObjectMapper();
         executionService = new ActionExecutionService(
-                runRepository, executionRepository, recommendationRepository, objectMapper
+                runRepository, executionRepository, recommendationRepository, objectMapper, taskService, dailyMenuRepository, foodRepository
         );
     }
 
@@ -277,6 +286,218 @@ class ActionExecutionServiceTest {
         verify(executionRepository).save(execCaptor.capture());
         assertEquals(ActionExecutionStatus.FAILED, execCaptor.getValue().getStatus());
         assertEquals("ACTION_EXECUTION_FAILED", execCaptor.getValue().getErrorCode());
+    }
+
+    // =========================================================================
+    // PHASE 8: CONTROLLED APPROVED ACTION EXECUTION (UPDATE_MENU) TESTS
+    // =========================================================================
+
+    @Test
+    void executeApprovedAction_whenUpdateMenu_successfullyUpdatesDailyMenu_andTransitionsTaskToReadyForVerification() throws Exception {
+        AgentRun run = buildRun(20L, AgentRunStatus.APPROVED);
+        ActionBrief brief = new ActionBrief(
+                "Review menu rotation",
+                "Repetition fatigue detected",
+                List.of("Observation"),
+                List.of("Evidence"),
+                List.of("Possible factor"),
+                List.of("Model output"),
+                new ActionBrief.ProposedActionDetails(
+                        ProposedActionType.UPDATE_MENU,
+                        "Replace Aloo Gobi with Paneer Bhurji",
+                        "Menu rotation",
+                        "UPDATE_MENU",
+                        "2026-10-07",
+                        "DINNER",
+                        "Aloo Gobi",
+                        "Paneer Bhurji"
+                ),
+                "Rationale",
+                List.of("Assumption"),
+                List.of("Limitation"),
+                List.of(1, 2),
+                LocalDateTime.now().toString(),
+                "WAITING_FOR_APPROVAL"
+        );
+        run.setActionBrief(objectMapper.writeValueAsString(brief));
+
+        when(runRepository.findById(20L)).thenReturn(Optional.of(run));
+        when(executionRepository.findByAgentRunId(20L)).thenReturn(Optional.empty());
+
+        com.messo.model.Food alooGobi = new com.messo.model.Food();
+        alooGobi.setId(101L);
+        alooGobi.setName("Aloo Gobi");
+        alooGobi.setMealType("Lunch");
+
+        com.messo.model.Food paneerBhurji = new com.messo.model.Food();
+        paneerBhurji.setId(102L);
+        paneerBhurji.setName("Paneer Bhurji");
+        paneerBhurji.setMealType("Dinner");
+
+        com.messo.model.DailyMenu dailyMenu = new com.messo.model.DailyMenu();
+        dailyMenu.setId(501L);
+        dailyMenu.setMenuDate(java.time.LocalDate.of(2026, 10, 7));
+        dailyMenu.setFood(alooGobi);
+
+        when(dailyMenuRepository.findByMenuDate(java.time.LocalDate.of(2026, 10, 7))).thenReturn(Optional.of(dailyMenu));
+        when(foodRepository.findByNameIgnoreCase("Paneer Bhurji")).thenReturn(Optional.of(paneerBhurji));
+        when(dailyMenuRepository.save(any(com.messo.model.DailyMenu.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        when(recommendationRepository.save(any(AgentRecommendation.class))).thenAnswer(inv -> {
+            AgentRecommendation r = inv.getArgument(0);
+            setField(r, "id", 201L);
+            return r;
+        });
+
+        when(executionRepository.save(any(AgentActionExecution.class))).thenAnswer(inv -> {
+            AgentActionExecution e = inv.getArgument(0);
+            setField(e, "id", 301L);
+            return e;
+        });
+
+        var taskResponse = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                55L, 20L, 201L, "Review menu rotation", "Replace Aloo Gobi with Paneer Bhurji",
+                "Reason", "Menu rotation", com.messo.agent.task.AgentImplementationTaskStatus.OPEN,
+                "MESO AI Operations Agent", LocalDateTime.now(), null, null
+        );
+        when(taskService.createTaskForApprovedRun(20L, "admin@messo.com")).thenReturn(taskResponse);
+
+        var updatedTaskResponse = new com.messo.agent.dto.AgentImplementationTaskResponse(
+                55L, 20L, 201L, "Review menu rotation", "Replace Aloo Gobi with Paneer Bhurji",
+                "Reason", "Menu rotation", com.messo.agent.task.AgentImplementationTaskStatus.READY_FOR_VERIFICATION,
+                "MESO AI Operations Agent", LocalDateTime.now(), null, null,
+                "UPDATE_MENU", java.time.LocalDate.of(2026, 10, 7), "DINNER", "Aloo Gobi", "Paneer Bhurji",
+                LocalDateTime.now(), "MESO AI Operations Agent"
+        );
+        when(taskService.recordActionExecutionOnTask(
+                eq(55L), eq("UPDATE_MENU"), eq("Aloo Gobi"), eq("Paneer Bhurji"),
+                eq(java.time.LocalDate.of(2026, 10, 7)), eq("DINNER"), anyString()
+        )).thenReturn(updatedTaskResponse);
+
+        ActionExecutionResponse response = executionService.executeApprovedAction(20L, "admin@messo.com");
+
+        assertNotNull(response);
+        assertEquals(AgentRunStatus.COMPLETED, response.status());
+        assertEquals(ActionExecutionStatus.SUCCESS, response.executionStatus());
+        assertEquals("UPDATE_MENU", response.actionType());
+        assertTrue(response.summary().contains("The approved menu change was applied to the operational database"));
+
+        // Verify DailyMenu food was mutated to Paneer Bhurji
+        assertEquals("Paneer Bhurji", dailyMenu.getFood().getName());
+        verify(dailyMenuRepository, times(1)).save(dailyMenu);
+
+        // Verify implementation task was updated to READY_FOR_VERIFICATION (NOT COMPLETED!)
+        verify(taskService, times(1)).recordActionExecutionOnTask(
+                eq(55L), eq("UPDATE_MENU"), eq("Aloo Gobi"), eq("Paneer Bhurji"),
+                eq(java.time.LocalDate.of(2026, 10, 7)), eq("DINNER"), anyString()
+        );
+        assertEquals("55", response.result().get("taskId").toString());
+        assertEquals("READY_FOR_VERIFICATION", response.result().get("taskStatus"));
+        assertEquals("Aloo Gobi", response.result().get("beforeValue"));
+        assertEquals("Paneer Bhurji", response.result().get("afterValue"));
+
+        // Verify execution audit logged as SUCCESS
+        ArgumentCaptor<AgentActionExecution> execCaptor = ArgumentCaptor.forClass(AgentActionExecution.class);
+        verify(executionRepository).save(execCaptor.capture());
+        assertEquals(ActionExecutionStatus.SUCCESS, execCaptor.getValue().getStatus());
+        assertEquals("UPDATE_MENU", execCaptor.getValue().getActionType());
+        assertTrue(execCaptor.getValue().getResultSummary().contains("DailyMenu#501@2026-10-07") ||
+                   execCaptor.getValue().getTargetReference().contains("DailyMenu#501@2026-10-07"));
+    }
+
+    @Test
+    void executeApprovedAction_whenUpdateMenu_andMenuNotFound_failsSafelyWithoutModifyingDailyMenu() throws Exception {
+        AgentRun run = buildRun(21L, AgentRunStatus.APPROVED);
+        ActionBrief brief = new ActionBrief(
+                "Review menu rotation", "Repetition fatigue", List.of(), List.of(), List.of(), List.of(),
+                new ActionBrief.ProposedActionDetails(
+                        ProposedActionType.UPDATE_MENU, "Desc", "Target",
+                        "UPDATE_MENU", "2026-10-07", "DINNER", "Aloo Gobi", "Paneer Bhurji"
+                ),
+                "Rationale", List.of(), List.of(), List.of(1), LocalDateTime.now().toString(), "WAITING_FOR_APPROVAL"
+        );
+        run.setActionBrief(objectMapper.writeValueAsString(brief));
+
+        when(runRepository.findById(21L)).thenReturn(Optional.of(run));
+        when(executionRepository.findByAgentRunId(21L)).thenReturn(Optional.empty());
+        when(dailyMenuRepository.findByMenuDate(java.time.LocalDate.of(2026, 10, 7))).thenReturn(Optional.empty());
+
+        ActionExecutionResponse response = executionService.executeApprovedAction(21L, "admin@messo.com");
+
+        assertNotNull(response);
+        assertEquals(AgentRunStatus.FAILED, response.status());
+        assertEquals(ActionExecutionStatus.FAILED, response.executionStatus());
+        assertEquals("MENU_NOT_FOUND", run.getFailureCode());
+        verify(dailyMenuRepository, never()).save(any());
+    }
+
+    @Test
+    void executeApprovedAction_whenUpdateMenu_andCurrentFoodStale_failsSafelyToPreventOverwrite() throws Exception {
+        AgentRun run = buildRun(22L, AgentRunStatus.APPROVED);
+        ActionBrief brief = new ActionBrief(
+                "Review menu rotation", "Repetition fatigue", List.of(), List.of(), List.of(), List.of(),
+                new ActionBrief.ProposedActionDetails(
+                        ProposedActionType.UPDATE_MENU, "Desc", "Target",
+                        "UPDATE_MENU", "2026-10-07", "DINNER", "Aloo Gobi", "Paneer Bhurji"
+                ),
+                "Rationale", List.of(), List.of(), List.of(1), LocalDateTime.now().toString(), "WAITING_FOR_APPROVAL"
+        );
+        run.setActionBrief(objectMapper.writeValueAsString(brief));
+
+        when(runRepository.findById(22L)).thenReturn(Optional.of(run));
+        when(executionRepository.findByAgentRunId(22L)).thenReturn(Optional.empty());
+
+        // Food on menu is actually Rajma Chawal, not Aloo Gobi (stale conflict)
+        com.messo.model.Food rajma = new com.messo.model.Food();
+        rajma.setName("Rajma Chawal");
+        com.messo.model.DailyMenu dailyMenu = new com.messo.model.DailyMenu();
+        dailyMenu.setFood(rajma);
+        dailyMenu.setMenuDate(java.time.LocalDate.of(2026, 10, 7));
+
+        when(dailyMenuRepository.findByMenuDate(java.time.LocalDate.of(2026, 10, 7))).thenReturn(Optional.of(dailyMenu));
+
+        ActionExecutionResponse response = executionService.executeApprovedAction(22L, "admin@messo.com");
+
+        assertNotNull(response);
+        assertEquals(AgentRunStatus.FAILED, response.status());
+        assertEquals(ActionExecutionStatus.FAILED, response.executionStatus());
+        assertEquals("STALE_MENU_STATE", run.getFailureCode());
+        assertEquals("Rajma Chawal", dailyMenu.getFood().getName());
+        verify(dailyMenuRepository, never()).save(any());
+    }
+
+    @Test
+    void executeApprovedAction_whenUpdateMenu_andProposedFoodNotFoundInCatalog_failsSafely() throws Exception {
+        AgentRun run = buildRun(23L, AgentRunStatus.APPROVED);
+        ActionBrief brief = new ActionBrief(
+                "Review menu rotation", "Repetition fatigue", List.of(), List.of(), List.of(), List.of(),
+                new ActionBrief.ProposedActionDetails(
+                        ProposedActionType.UPDATE_MENU, "Desc", "Target",
+                        "UPDATE_MENU", "2026-10-07", "DINNER", "Aloo Gobi", "NonExistentSpecialDish"
+                ),
+                "Rationale", List.of(), List.of(), List.of(1), LocalDateTime.now().toString(), "WAITING_FOR_APPROVAL"
+        );
+        run.setActionBrief(objectMapper.writeValueAsString(brief));
+
+        when(runRepository.findById(23L)).thenReturn(Optional.of(run));
+        when(executionRepository.findByAgentRunId(23L)).thenReturn(Optional.empty());
+
+        com.messo.model.Food alooGobi = new com.messo.model.Food();
+        alooGobi.setName("Aloo Gobi");
+        com.messo.model.DailyMenu dailyMenu = new com.messo.model.DailyMenu();
+        dailyMenu.setFood(alooGobi);
+        dailyMenu.setMenuDate(java.time.LocalDate.of(2026, 10, 7));
+
+        when(dailyMenuRepository.findByMenuDate(java.time.LocalDate.of(2026, 10, 7))).thenReturn(Optional.of(dailyMenu));
+        when(foodRepository.findByNameIgnoreCase("NonExistentSpecialDish")).thenReturn(Optional.empty());
+
+        ActionExecutionResponse response = executionService.executeApprovedAction(23L, "admin@messo.com");
+
+        assertNotNull(response);
+        assertEquals(AgentRunStatus.FAILED, response.status());
+        assertEquals("PROPOSED_FOOD_NOT_FOUND", run.getFailureCode());
+        assertEquals("Aloo Gobi", dailyMenu.getFood().getName());
+        verify(dailyMenuRepository, never()).save(any());
     }
 
     // =========================================================================

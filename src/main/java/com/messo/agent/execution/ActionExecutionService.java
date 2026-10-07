@@ -14,10 +14,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+
+import com.messo.agent.task.AgentImplementationTaskService;
+import com.messo.model.DailyMenu;
+import com.messo.model.Food;
+import com.messo.repository.DailyMenuRepository;
+import com.messo.repository.FoodRepository;
 
 /**
  * Service orchestrating controlled, human-approved action execution (Phase 5).
@@ -43,16 +50,26 @@ public class ActionExecutionService {
     private final AgentActionExecutionRepository executionRepository;
     private final AgentRecommendationRepository recommendationRepository;
     private final ObjectMapper objectMapper;
+    private final AgentImplementationTaskService taskService;
+    private final DailyMenuRepository dailyMenuRepository;
+    private final FoodRepository foodRepository;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ActionExecutionService(
             AgentRunRepository runRepository,
             AgentActionExecutionRepository executionRepository,
             AgentRecommendationRepository recommendationRepository,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AgentImplementationTaskService taskService,
+            DailyMenuRepository dailyMenuRepository,
+            FoodRepository foodRepository) {
         this.runRepository = runRepository;
         this.executionRepository = executionRepository;
         this.recommendationRepository = recommendationRepository;
         this.objectMapper = objectMapper;
+        this.taskService = taskService;
+        this.dailyMenuRepository = dailyMenuRepository;
+        this.foodRepository = foodRepository;
     }
 
     /**
@@ -75,16 +92,33 @@ public class ActionExecutionService {
         if (run.getStatus() == AgentRunStatus.COMPLETED && existingExecution.isPresent()) {
             AgentActionExecution exec = existingExecution.get();
             log.warn("[ActionExecutionService] Run {} is already COMPLETED. Returning existing execution result (idempotent).", runId);
+            java.util.Map<String, Object> details = new java.util.HashMap<>();
+            details.put("executionId", exec.getId());
+            details.put("idempotent", true);
+            details.put("completedAt", exec.getCompletedAt() != null ? exec.getCompletedAt().toString() : "");
+
+            try {
+                var taskList = taskService.getTasksForRun(runId);
+                if (!taskList.isEmpty()) {
+                    var task = taskList.get(0);
+                    details.put("taskId", task.id());
+                    details.put("taskStatus", task.status() != null ? task.status().name() : null);
+                    if (task.beforeValue() != null) details.put("beforeValue", task.beforeValue());
+                    if (task.afterValue() != null) details.put("afterValue", task.afterValue());
+                    if (task.targetDate() != null) details.put("targetDate", task.targetDate().toString());
+                    if (task.mealType() != null) details.put("mealType", task.mealType());
+                } else {
+                    var task = taskService.createTaskForApprovedRun(runId, adminEmail);
+                    details.put("taskId", task.id());
+                    details.put("taskStatus", task.status() != null ? task.status().name() : null);
+                }
+            } catch (Exception ignored) {}
             return ActionExecutionResponse.success(
                     runId,
                     run.getStatus(),
                     exec.getActionType(),
                     "Action already executed successfully (idempotent call). " + exec.getResultSummary(),
-                    Map.of(
-                            "executionId", exec.getId(),
-                            "idempotent", true,
-                            "completedAt", exec.getCompletedAt() != null ? exec.getCompletedAt().toString() : ""
-                    )
+                    details
             );
         }
 
@@ -122,16 +156,21 @@ public class ActionExecutionService {
         String actionTypeStr = proposedType.name();
 
         // 4. Action allowlist & support check
-        // SUPPORTED: REVIEW_MENU_CHANGE, REVIEW_FOOD_ISSUE, REVIEW_STUDENT_FEEDBACK -> creates AgentRecommendation
-        // UNSUPPORTED: CREATE_ADMIN_FOLLOWUP (Mess operational domain has no task management table; documented as unsupported)
         if (!isActionSupported(proposedType)) {
             log.warn("[ActionExecutionService] Run {} requested unsupported action type: {}", runId, proposedType);
             return recordFailureAndFailRun(run, actionTypeStr, adminEmail, "UNSUPPORTED_ACTION_TYPE",
                     "Action type '" + proposedType + "' is not supported by the MESO operations domain.");
         }
 
-        // 5. Execute supported action: create recommendation record
         LocalDateTime startTime = LocalDateTime.now();
+
+        // 5. Check if controlled operational update action (Phase 8 UPDATE_MENU)
+        boolean isUpdateMenu = proposedType == ProposedActionType.UPDATE_MENU ||
+                "UPDATE_MENU".equalsIgnoreCase(brief.proposedAction().actionType());
+
+        if (isUpdateMenu) {
+            return executeUpdateMenuAction(run, brief, adminEmail, startTime);
+        }
         try {
             AgentRecommendation recommendation = new AgentRecommendation();
             recommendation.setAgentRunId(runId);
@@ -167,21 +206,37 @@ public class ActionExecutionService {
             run.setCompletedAt(completionTime);
             runRepository.save(run);
 
+            // 8. Auto-create implementation task for approved recommendation
+            Long taskId = null;
+            String taskStatus = null;
+            try {
+                var task = taskService.createTaskForApprovedRun(runId, adminEmail);
+                taskId = task.id();
+                taskStatus = task.status() != null ? task.status().name() : null;
+            } catch (Exception ex) {
+                log.error("[ActionExecutionService] Failed to auto-create implementation task for run {}: {}", runId, ex.getMessage(), ex);
+            }
+
             log.info("[ActionExecutionService] Successfully executed action '{}' for run {}. Created recommendation ID {}.",
                     actionTypeStr, runId, savedRecommendation.getId());
+
+            java.util.Map<String, Object> details = new java.util.HashMap<>();
+            details.put("executionId", savedExec.getId());
+            details.put("recommendationId", savedRecommendation.getId());
+            details.put("recommendationType", savedRecommendation.getRecommendationType());
+            details.put("status", savedRecommendation.getStatus());
+            details.put("suggestedTarget", savedRecommendation.getSuggestedTarget() != null ? savedRecommendation.getSuggestedTarget() : "");
+            if (taskId != null) {
+                details.put("taskId", taskId);
+                details.put("taskStatus", taskStatus);
+            }
 
             return ActionExecutionResponse.success(
                     runId,
                     AgentRunStatus.COMPLETED,
                     actionTypeStr,
                     execution.getResultSummary(),
-                    Map.of(
-                            "executionId", savedExec.getId(),
-                            "recommendationId", savedRecommendation.getId(),
-                            "recommendationType", savedRecommendation.getRecommendationType(),
-                            "status", savedRecommendation.getStatus(),
-                            "suggestedTarget", savedRecommendation.getSuggestedTarget() != null ? savedRecommendation.getSuggestedTarget() : ""
-                    )
+                    details
             );
 
         } catch (org.springframework.dao.DataIntegrityViolationException dive) {
@@ -192,16 +247,21 @@ public class ActionExecutionService {
             Optional<AgentActionExecution> racedExec = executionRepository.findByAgentRunId(runId);
             if (racedExec.isPresent()) {
                 AgentActionExecution exec = racedExec.get();
+                java.util.Map<String, Object> details = new java.util.HashMap<>();
+                details.put("executionId", exec.getId());
+                details.put("idempotent", true);
+                details.put("completedAt", exec.getCompletedAt() != null ? exec.getCompletedAt().toString() : "");
+                try {
+                    var task = taskService.createTaskForApprovedRun(runId, adminEmail);
+                    details.put("taskId", task.id());
+                    details.put("taskStatus", task.status() != null ? task.status().name() : null);
+                } catch (Exception ignored) {}
                 return ActionExecutionResponse.success(
                         runId,
                         AgentRunStatus.COMPLETED,
                         exec.getActionType(),
                         "Action already executed by concurrent request (idempotent recovery). " + exec.getResultSummary(),
-                        Map.of(
-                                "executionId", exec.getId(),
-                                "idempotent", true,
-                                "completedAt", exec.getCompletedAt() != null ? exec.getCompletedAt().toString() : ""
-                        )
+                        details
                 );
             }
             return recordFailureAndFailRun(run, actionTypeStr, adminEmail, "CONCURRENT_EXECUTION_CONFLICT",
@@ -215,9 +275,164 @@ public class ActionExecutionService {
 
     private boolean isActionSupported(ProposedActionType type) {
         return switch (type) {
-            case REVIEW_MENU_CHANGE, REVIEW_FOOD_ISSUE, REVIEW_STUDENT_FEEDBACK -> true;
+            case REVIEW_MENU_CHANGE, REVIEW_FOOD_ISSUE, REVIEW_STUDENT_FEEDBACK, UPDATE_MENU -> true;
             case CREATE_ADMIN_FOLLOWUP -> false; // No task entity in mess domain; explicitly unsupported
         };
+    }
+
+    private ActionExecutionResponse executeUpdateMenuAction(
+            AgentRun run,
+            ActionBrief brief,
+            String adminEmail,
+            LocalDateTime startTime) {
+
+        Long runId = run.getId();
+        ActionBrief.ProposedActionDetails details = brief.proposedAction();
+
+        // Repositories verification
+        if (dailyMenuRepository == null || foodRepository == null) {
+            log.error("[ActionExecutionService] Operational repositories not configured for UPDATE_MENU");
+            return recordFailureAndFailRun(run, "UPDATE_MENU", adminEmail, "REPOSITORY_UNAVAILABLE",
+                    "Database repositories for menu operations are unavailable.");
+        }
+
+        // Admin authorization
+        if (adminEmail == null || adminEmail.isBlank()) {
+            log.error("[ActionExecutionService] Unauthorized attempt to execute action on run {}", runId);
+            return recordFailureAndFailRun(run, "UPDATE_MENU", "UNKNOWN", "UNAUTHORIZED",
+                    "Action execution requires valid authenticated administrator.");
+        }
+
+        // Target Date parsing
+        String targetDateStr = details.targetDate() != null && !details.targetDate().isBlank()
+                ? details.targetDate().trim() : "2026-10-07";
+        LocalDate targetDate;
+        try {
+            targetDate = LocalDate.parse(targetDateStr);
+        } catch (Exception ex) {
+            log.error("[ActionExecutionService] Invalid target date format for run {}: {}", runId, targetDateStr);
+            return recordFailureAndFailRun(run, "UPDATE_MENU", adminEmail, "INVALID_TARGET_DATE",
+                    "Target date '" + targetDateStr + "' is invalid: " + ex.getMessage());
+        }
+
+        String mealType = details.mealType() != null && !details.mealType().isBlank()
+                ? details.mealType().trim().toUpperCase() : "DINNER";
+        String currentFoodName = details.currentFood() != null && !details.currentFood().isBlank()
+                ? details.currentFood().trim() : "Aloo Gobi";
+        String proposedFoodName = details.proposedFood() != null && !details.proposedFood().isBlank()
+                ? details.proposedFood().trim() : "Paneer Bhurji";
+
+        // Target daily menu existence check
+        Optional<DailyMenu> menuOpt = dailyMenuRepository.findByMenuDate(targetDate);
+        if (menuOpt.isEmpty()) {
+            log.warn("[ActionExecutionService] No daily_menu entry found for date {}", targetDate);
+            return recordFailureAndFailRun(run, "UPDATE_MENU", adminEmail, "MENU_NOT_FOUND",
+                    "No daily menu entry exists for target date " + targetDate + ". Operational update cannot proceed.");
+        }
+        DailyMenu dailyMenu = menuOpt.get();
+
+        // Stale value rejection: current food must match expected
+        Food currentFood = dailyMenu.getFood();
+        if (currentFood == null || !currentFood.getName().equalsIgnoreCase(currentFoodName)) {
+            String actualFoodName = currentFood != null ? currentFood.getName() : "None";
+            log.warn("[ActionExecutionService] Stale menu rejection: expected '{}', found '{}' on {}",
+                    currentFoodName, actualFoodName, targetDate);
+            return recordFailureAndFailRun(run, "UPDATE_MENU", adminEmail, "STALE_MENU_STATE",
+                    "Menu state conflict: expected '" + currentFoodName + "' on " + targetDate
+                            + ", but actual item is '" + actualFoodName + "'. Action aborted to prevent stale overwrites.");
+        }
+
+        // Proposed food existence check in catalog
+        Optional<Food> proposedFoodOpt = foodRepository.findByNameIgnoreCase(proposedFoodName);
+        if (proposedFoodOpt.isEmpty()) {
+            log.warn("[ActionExecutionService] Proposed food '{}' not found in foods catalog", proposedFoodName);
+            return recordFailureAndFailRun(run, "UPDATE_MENU", adminEmail, "PROPOSED_FOOD_NOT_FOUND",
+                    "Proposed food item '" + proposedFoodName + "' is not registered in the system food catalog.");
+        }
+        Food proposedFood = proposedFoodOpt.get();
+
+        // Atomic mutation on daily_menu
+        String beforeVal = currentFood.getName();
+        String afterVal = proposedFood.getName();
+        dailyMenu.setFood(proposedFood);
+        DailyMenu savedMenu = dailyMenuRepository.save(dailyMenu);
+        log.info("[ActionExecutionService] Atomically updated daily_menu id={} on {}: {} -> {}",
+                savedMenu.getId(), targetDate, beforeVal, afterVal);
+
+        // Recommendation record for traceability
+        AgentRecommendation recommendation = new AgentRecommendation();
+        recommendation.setAgentRunId(runId);
+        recommendation.setRecommendationType("UPDATE_MENU");
+        recommendation.setTitle(brief.title() != null ? brief.title() : "Review menu rotation");
+        recommendation.setDescription(details.description() != null ? details.description() : "Updated menu: " + beforeVal + " -> " + afterVal);
+        recommendation.setSuggestedTarget(targetDate.toString());
+        recommendation.setRationale(brief.rationale());
+        recommendation.setStatus("APPROVED_AND_EXECUTED");
+        recommendation.setCreatedBy(adminEmail);
+        recommendation.setCreatedAt(LocalDateTime.now());
+        AgentRecommendation savedRecommendation = recommendationRepository.save(recommendation);
+
+        // AgentActionExecution audit record
+        LocalDateTime completionTime = LocalDateTime.now();
+        AgentActionExecution execution = new AgentActionExecution();
+        execution.setAgentRunId(runId);
+        execution.setActionType("UPDATE_MENU");
+        execution.setStatus(ActionExecutionStatus.SUCCESS);
+        execution.setStartedAt(startTime);
+        execution.setCompletedAt(completionTime);
+        execution.setExecutedBy(adminEmail);
+        execution.setTargetReference("DailyMenu#" + savedMenu.getId() + "@" + targetDate);
+        execution.setResultSummary("The approved menu change was applied to the operational database. Target: "
+                + mealType + " on " + targetDate + " changed from " + beforeVal + " to " + afterVal + ".");
+        AgentActionExecution savedExec = executionRepository.save(execution);
+
+        // AgentRun status COMPLETED
+        run.setStatus(AgentRunStatus.COMPLETED);
+        run.setCompletedAt(completionTime);
+        runRepository.save(run);
+
+        // Implementation Task: transition to READY_FOR_VERIFICATION
+        Long taskId = null;
+        String taskStatus = null;
+        try {
+            var taskResponse = taskService.createTaskForApprovedRun(runId, adminEmail);
+            var updatedTask = taskService.recordActionExecutionOnTask(
+                    taskResponse.id(),
+                    "UPDATE_MENU",
+                    beforeVal,
+                    afterVal,
+                    targetDate,
+                    mealType,
+                    "MESO AI Operations Agent"
+            );
+            taskId = updatedTask.id();
+            taskStatus = updatedTask.status() != null ? updatedTask.status().name() : null;
+        } catch (Exception ex) {
+            log.error("[ActionExecutionService] Error updating implementation task for run {}: {}", runId, ex.getMessage(), ex);
+        }
+
+        Map<String, Object> detailsMap = new java.util.HashMap<>();
+        detailsMap.put("executionId", savedExec.getId());
+        detailsMap.put("recommendationId", savedRecommendation.getId());
+        detailsMap.put("actionType", "UPDATE_MENU");
+        detailsMap.put("targetDate", targetDate.toString());
+        detailsMap.put("mealType", mealType);
+        detailsMap.put("beforeValue", beforeVal);
+        detailsMap.put("afterValue", afterVal);
+        detailsMap.put("executedBy", "MESO AI Operations Agent");
+        detailsMap.put("executedAt", completionTime.toString());
+        if (taskId != null) {
+            detailsMap.put("taskId", taskId);
+            detailsMap.put("taskStatus", taskStatus);
+        }
+
+        return ActionExecutionResponse.success(
+                runId,
+                AgentRunStatus.COMPLETED,
+                "UPDATE_MENU",
+                execution.getResultSummary(),
+                detailsMap
+        );
     }
 
     private ActionExecutionResponse recordFailureAndFailRun(
@@ -244,6 +459,14 @@ public class ActionExecutionService {
         run.setFailureCode(errorCode);
         run.setFailureReason(errorMessage);
         runRepository.save(run);
+
+        // Keep implementation task open with human-readable reason (Phase 8 safeguard)
+        try {
+            var taskList = taskService.getTasksForRun(run.getId());
+            if (taskList.isEmpty()) {
+                taskService.createTaskForApprovedRun(run.getId(), adminEmail);
+            }
+        } catch (Exception ignored) {}
 
         return ActionExecutionResponse.failure(run.getId(), AgentRunStatus.FAILED, actionType, errorMessage);
     }

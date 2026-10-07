@@ -17,21 +17,35 @@ interface AgentStartModalProps {
   isLoading: boolean;
 }
 
-const EXAMPLE_TEMPLATES = [
+const EXAMPLE_TEMPLATES: Array<{
+  label: string;
+  target: string;
+  description: string;
+  goalType?: AgentGoalType;
+}> = [
+  {
+    label: "Menu repetition & student fatigue",
+    target: "MENU_ROTATION",
+    description: "Investigate whether frequent menu repetition is contributing to student dining fatigue.",
+    goalType: "MENU_REPETITION_AND_STUDENT_FATIGUE",
+  },
   {
     label: "Dinner satisfaction drop",
     target: "DINNER_SATISFACTION",
     description: "Investigate why dinner satisfaction dropped this week and identify contributing factors.",
+    goalType: "INVESTIGATE_RATING_DROP",
   },
   {
     label: "Breakfast complaint surge",
     target: "BREAKFAST_SERVICE",
     description: "Analyze the recent surge in breakfast complaints and review student feedback patterns.",
+    goalType: "INVESTIGATE_COMPLAINT_SPIKE",
   },
   {
     label: "Turnout & food waste risk",
     target: "DINNER_TURNOUT",
     description: "Assess tomorrow's dinner turnout risk and forecast potential food overproduction.",
+    goalType: "REVIEW_MENU_PERFORMANCE",
   },
 ];
 
@@ -43,6 +57,7 @@ export function AgentStartModal({
 }: AgentStartModalProps) {
   const [goalDescription, setGoalDescription] = useState("");
   const [goalTarget, setGoalTarget] = useState("");
+  const [selectedGoalType, setSelectedGoalType] = useState<AgentGoalType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Close on Escape key
@@ -66,10 +81,35 @@ export function AgentStartModal({
       setError("Please describe the issue or question you want investigated.");
       return;
     }
+
+    const descLower = goalDescription.toLowerCase();
+    let resolvedGoalType: AgentGoalType = selectedGoalType || "INVESTIGATE_OPERATIONAL_ISSUE";
+    let resolvedTarget = goalTarget.trim();
+
+    if (
+      descLower.includes("repetition") ||
+      descLower.includes("fatigue") ||
+      descLower.includes("rotation") ||
+      resolvedGoalType === "MENU_REPETITION_AND_STUDENT_FATIGUE"
+    ) {
+      resolvedGoalType = "MENU_REPETITION_AND_STUDENT_FATIGUE";
+      if (!resolvedTarget) {
+        resolvedTarget = "MENU_ROTATION";
+      }
+    } else if (descLower.includes("dinner")) {
+      if (!resolvedTarget) resolvedTarget = "DINNER_SATISFACTION";
+    } else if (descLower.includes("breakfast")) {
+      if (!resolvedTarget) resolvedTarget = "BREAKFAST_SERVICE";
+    } else if (descLower.includes("turnout")) {
+      if (!resolvedTarget) resolvedTarget = "DINNER_TURNOUT";
+    } else if (!resolvedTarget) {
+      resolvedTarget = "GENERAL_OPERATIONS";
+    }
+
     try {
       await onSubmit({
-        goalType: "INVESTIGATE_OPERATIONAL_ISSUE",
-        goalTarget: goalTarget.trim() || "GENERAL_OPERATIONS",
+        goalType: resolvedGoalType,
+        goalTarget: resolvedTarget,
         goalDescription: goalDescription.trim(),
       });
       onClose();
@@ -81,6 +121,7 @@ export function AgentStartModal({
   const handleApplyTemplate = (tpl: typeof EXAMPLE_TEMPLATES[0]) => {
     setGoalDescription(tpl.description);
     setGoalTarget(tpl.target);
+    setSelectedGoalType(tpl.goalType || null);
   };
 
   return (
@@ -96,8 +137,8 @@ export function AgentStartModal({
       >
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
           <div>
-            <h2 id="agent-modal-title" className="text-sm font-bold uppercase tracking-wider text-slate-900">
-              START INVESTIGATION
+            <h2 id="agent-modal-title" className="text-sm font-bold text-slate-900">
+              Start an Investigation
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Launch an evidence-gathering investigation for administrator review.
@@ -176,7 +217,7 @@ export function AgentStartModal({
               id="agent-target-input"
               value={goalTarget}
               onChange={(e) => setGoalTarget(e.target.value)}
-              placeholder="e.g. DINNER_SATISFACTION, Rajma, or Breakfast"
+              placeholder="e.g. Dinner, Rajma, or Breakfast"
               disabled={isLoading}
               className="text-xs"
             />
@@ -197,9 +238,9 @@ export function AgentStartModal({
               variant="primary"
               size="sm"
               isLoading={isLoading}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-medium"
+              className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium"
             >
-              Start Investigation
+              Start an Investigation
             </Button>
           </div>
         </form>

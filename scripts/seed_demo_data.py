@@ -36,6 +36,7 @@ FOOD_CATALOG = [
     ("Kadai Paneer", "Dinner"),
     ("Shahi Paneer", "Dinner"),
     ("Palak Paneer", "Dinner"),
+    ("Paneer Bhurji", "Dinner"),
     ("Dal Tadka", "Dinner"),
     ("Dal Fry", "Lunch"),
     ("Rajma Chawal", "Lunch"),

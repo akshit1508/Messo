@@ -1,18 +1,26 @@
 "use client";
 
 import React, { useState } from "react";
-import { AgentRunResponse, AgentStepResponse, AgentRecommendationResponse } from "@/types/agent";
+import {
+  AgentRunResponse,
+  AgentStepResponse,
+  AgentRecommendationResponse,
+  AgentImplementationTaskResponse,
+} from "@/types/agent";
+import { humanizeStatus, humanizeToolName, humanizeTaskStatus } from "@/lib/agentDisplay";
 
 interface AgentAuditTrailProps {
   run: AgentRunResponse;
   steps: AgentStepResponse[];
   recommendations: AgentRecommendationResponse[];
+  tasks?: AgentImplementationTaskResponse[];
 }
 
 export function AgentAuditTrail({
   run,
   steps,
   recommendations,
+  tasks = [],
 }: AgentAuditTrailProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
@@ -20,6 +28,7 @@ export function AgentAuditTrail({
   const isApproved = run.status === "APPROVED" || run.status === "COMPLETED";
   const isRejected = run.status === "CANCELLED" && !!run.rejectedBy;
   const isExecuted = run.status === "COMPLETED";
+  const activeTask = tasks[0];
 
   return (
     <div className="border border-slate-200/90 rounded-lg bg-white overflow-hidden text-xs">
@@ -30,11 +39,11 @@ export function AgentAuditTrail({
         aria-expanded={isOpen}
       >
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-slate-900">
-            AUDIT TRAIL & CUSTODY CHAIN
+          <span className="text-[11px] uppercase tracking-wider text-slate-900 font-bold">
+            AUDIT TRAIL
           </span>
           <span className="text-[11px] text-slate-400 font-normal">
-            ({steps.length} steps · {recommendations.length} recommendations)
+            ({steps.length} steps · {recommendations.length} recommendations{tasks.length > 0 ? ` · ${tasks.length} tasks` : ""})
           </span>
         </div>
         <span className="text-slate-400 font-mono text-xs">
@@ -47,40 +56,62 @@ export function AgentAuditTrail({
           {/* 1. Human-Readable Lifecycle Flow */}
           <div className="pt-3">
             <h5 className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-2.5">
-              Lifecycle Progression
+              Lifecycle progression
             </h5>
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[11px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-2 text-[11px]">
               {/* Step 1: Investigation */}
               <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
                 <span className="block font-semibold text-slate-800">1. Investigation</span>
-                <span className="text-slate-500 text-[10px] block mt-0.5">
-                  {steps.length} tool steps executed
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  Evidence gathered
                 </span>
                 <span className="text-slate-400 text-[10px] block font-mono mt-1">
-                  By {run.initiatedBy}
+                  {steps.length} tool steps
                 </span>
               </div>
 
-              {/* Step 2: Synthesis */}
+              {/* Step 2: Analysis */}
               <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
-                <span className="block font-semibold text-slate-800">2. Action Brief</span>
-                <span className="text-slate-500 text-[10px] block mt-0.5">
-                  {run.actionBrief ? "Synthesized for review" : "In preparation"}
+                <span className="block font-semibold text-slate-800">2. Analysis</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  Intelligence evaluated
                 </span>
                 <span className="text-slate-400 text-[10px] block font-mono mt-1">
-                  {run.goalType}
+                  Root cause & patterns
                 </span>
               </div>
 
-              {/* Step 3: Decision */}
+              {/* Step 3: Recommendation */}
               <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
-                <span className="block font-semibold text-slate-800">3. Authorization</span>
-                <span className="text-slate-500 text-[10px] block mt-0.5">
+                <span className="block font-semibold text-slate-800">3. Recommendation</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  Action Brief prepared
+                </span>
+                <span className="text-slate-400 text-[10px] block font-mono mt-1">
+                  {run.actionBrief ? "Proposal ready" : "In preparation"}
+                </span>
+              </div>
+
+              {/* Step 4: Review */}
+              <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
+                <span className="block font-semibold text-slate-800">4. Review</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  Human decision required
+                </span>
+                <span className="text-slate-400 text-[10px] block font-mono mt-1">
+                  {isApproved || isRejected ? "Decision recorded" : "Awaiting decision"}
+                </span>
+              </div>
+
+              {/* Step 5: Approved */}
+              <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
+                <span className="block font-semibold text-slate-800">5. Approved</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
                   {isApproved
                     ? `Approved by ${run.approvedBy || "Admin"}`
                     : isRejected
                     ? `Rejected by ${run.rejectedBy}`
-                    : "Pending admin review"}
+                    : "Awaiting approval"}
                 </span>
                 {run.approvedAt && (
                   <span className="text-slate-400 text-[10px] block mt-1">
@@ -89,18 +120,31 @@ export function AgentAuditTrail({
                 )}
               </div>
 
-              {/* Step 4: Execution */}
+              {/* Step 6: Implementation Task */}
               <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
-                <span className="block font-semibold text-slate-800">4. Execution</span>
-                <span className="text-slate-500 text-[10px] block mt-0.5">
-                  {isExecuted
-                    ? "Recommendation logged"
+                <span className="block font-semibold text-slate-800">6. Implementation Task</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  {activeTask
+                    ? `Task #${activeTask.id} (${humanizeTaskStatus(activeTask.status)})`
                     : isApproved
-                    ? "Awaiting execution"
+                    ? "Task created"
                     : "Pending approval"}
                 </span>
                 <span className="text-slate-400 text-[10px] block font-mono mt-1">
-                  Status: {run.status}
+                  {activeTask?.status === "COMPLETED" ? "Marked complete" : activeTask ? "In operational flow" : "Not created"}
+                </span>
+              </div>
+
+              {/* Step 7: Human Team Implements */}
+              <div className="p-2.5 bg-slate-50 rounded border border-slate-200/80">
+                <span className="block font-semibold text-slate-800">7. Human Team Implements</span>
+                <span className="text-slate-600 text-[10px] block mt-0.5">
+                  Mess operations
+                </span>
+                <span className="text-slate-400 text-[10px] block font-mono mt-1">
+                  {activeTask?.status === "COMPLETED"
+                    ? `Completed by ${activeTask.completedBy || "admin"}`
+                    : "Human controlled"}
                 </span>
               </div>
             </div>
@@ -109,7 +153,7 @@ export function AgentAuditTrail({
           {/* 2. Step Sequence Overview */}
           <div>
             <h5 className="text-[10px] uppercase tracking-wider font-bold text-slate-400 mb-2">
-              Executed Steps
+              Investigation steps
             </h5>
             <div className="overflow-x-auto border border-slate-200 rounded">
               <table className="w-full text-left text-[11px]">
@@ -129,11 +173,13 @@ export function AgentAuditTrail({
                         {st.sequenceOrder < 10 ? `0${st.sequenceOrder}` : st.sequenceOrder}
                       </td>
                       <td className="py-1.5 px-3 font-medium text-slate-800">
-                        {st.toolName}
+                        {humanizeToolName(st.toolName)}
                       </td>
-                      <td className="py-1.5 px-3 text-slate-500">{st.toolType}</td>
+                      <td className="py-1.5 px-3 text-slate-500">
+                        {st.toolType === "READ_ONLY" ? "Read-only" : st.toolType?.toLowerCase().replace(/_/g, " ")}
+                      </td>
                       <td className="py-1.5 px-3 font-semibold text-slate-700">
-                        {st.status}
+                        {humanizeStatus(st.status)}
                       </td>
                       <td className="py-1.5 px-3 font-mono text-slate-500 text-right">
                         {st.durationMs != null ? `${st.durationMs}ms` : "—"}

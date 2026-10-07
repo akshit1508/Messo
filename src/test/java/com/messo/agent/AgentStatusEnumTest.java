@@ -124,4 +124,10 @@ class AgentStatusEnumTest {
         assertEquals(AgentGoalType.REVIEW_MENU_PERFORMANCE,
                 AgentGoalType.valueOf("REVIEW_MENU_PERFORMANCE"));
     }
+
+    @Test
+    void agentGoalType_menuRepetitionAndStudentFatigueExists() {
+        assertEquals(AgentGoalType.MENU_REPETITION_AND_STUDENT_FATIGUE,
+                AgentGoalType.valueOf("MENU_REPETITION_AND_STUDENT_FATIGUE"));
+    }
 }

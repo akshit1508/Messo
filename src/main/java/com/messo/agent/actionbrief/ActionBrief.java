@@ -36,8 +36,17 @@ public record ActionBrief(
     public record ProposedActionDetails(
             ProposedActionType type,
             String description,
-            String suggestedTarget
-    ) {}
+            String suggestedTarget,
+            String actionType,
+            String targetDate,
+            String mealType,
+            String currentFood,
+            String proposedFood
+    ) {
+        public ProposedActionDetails(ProposedActionType type, String description, String suggestedTarget) {
+            this(type, description, suggestedTarget, type != null ? type.name() : null, null, null, null, null);
+        }
+    }
 
     public ActionBrief {
         observations = observations != null ? List.copyOf(observations) : Collections.emptyList();

@@ -5,5 +5,6 @@ import java.util.List;
 
 public interface AgentRecommendationRepository extends JpaRepository<AgentRecommendation, Long> {
     List<AgentRecommendation> findByAgentRunId(Long agentRunId);
+    List<AgentRecommendation> findAllByAgentRunIdOrderByCreatedAtDesc(Long agentRunId);
     boolean existsByAgentRunId(Long agentRunId);
 }

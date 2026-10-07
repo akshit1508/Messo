@@ -4,6 +4,7 @@ import React from "react";
 import { AgentRecommendationResponse } from "@/types/agent";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { humanizeActionType, humanizeTarget } from "@/lib/agentDisplay";
 
 interface RecommendationResultCardProps {
   recommendation: AgentRecommendationResponse;
@@ -18,19 +19,19 @@ export function RecommendationResultCard({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/70">
-                Action Executed
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/70">
+                Recommendation created
               </span>
               <CardTitle className="text-sm font-bold text-slate-900">
-                RECOMMENDATION CREATED
+                Approved for implementation
               </CardTitle>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Administrative proposal persisted for mess management review.
+              Administrative proposal saved for mess management review.
             </p>
           </div>
-          <Badge variant="warning" size="sm">
-            {recommendation.status.replace(/_/g, " ")}
+          <Badge variant="success" size="sm">
+            Ready to put into action
           </Badge>
         </div>
       </CardHeader>
@@ -46,20 +47,20 @@ export function RecommendationResultCard({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <span className="font-semibold text-slate-500 block text-[10px] uppercase tracking-wider mb-0.5">
-              Action Type
+              Action type
             </span>
             <span className="text-slate-800 font-medium">
-              {recommendation.recommendationType?.replace(/_/g, " ")}
+              {humanizeActionType(recommendation.recommendationType)}
             </span>
           </div>
 
           {recommendation.suggestedTarget && (
             <div>
               <span className="font-semibold text-slate-500 block text-[10px] uppercase tracking-wider mb-0.5">
-                Target Entity
+                Target
               </span>
-              <span className="text-slate-800 font-mono">
-                {recommendation.suggestedTarget}
+              <span className="text-slate-800 font-medium">
+                {humanizeTarget(recommendation.suggestedTarget)}
               </span>
             </div>
           )}
@@ -87,11 +88,15 @@ export function RecommendationResultCard({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
           <div>
-            <span>Created by Agent: </span>
-            <span className="font-medium text-slate-700">{recommendation.createdBy}</span>
+            <span>Prepared by <strong>MESO AI Operations Agent</strong></span>
+            {recommendation.createdBy && (
+              <span className="block text-[10px] text-slate-500 mt-0.5">
+                Approved by <strong>{recommendation.createdBy}</strong>
+              </span>
+            )}
           </div>
           <div className="sm:text-right">
-            <span>Created at: </span>
+            <span>Recorded at: </span>
             <span className="font-medium text-slate-700">
               {new Date(recommendation.createdAt).toLocaleString()}
             </span>

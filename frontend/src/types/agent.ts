@@ -2,7 +2,8 @@ export type AgentGoalType =
   | "INVESTIGATE_OPERATIONAL_ISSUE"
   | "INVESTIGATE_RATING_DROP"
   | "INVESTIGATE_COMPLAINT_SPIKE"
-  | "REVIEW_MENU_PERFORMANCE";
+  | "REVIEW_MENU_PERFORMANCE"
+  | "MENU_REPETITION_AND_STUDENT_FATIGUE";
 
 export type AgentTriggerType = "MANUAL" | "SCHEDULED" | "ALERT";
 
@@ -69,6 +70,11 @@ export interface ProposedActionDetails {
   type: string;
   description: string;
   suggestedTarget?: string;
+  actionType?: string;
+  targetDate?: string;
+  mealType?: string;
+  currentFood?: string;
+  proposedFood?: string;
 }
 
 export interface ActionBriefData {
@@ -114,4 +120,33 @@ export interface CreateAgentRunRequest {
   goalType: AgentGoalType;
   goalTarget?: string;
   goalDescription?: string;
+}
+
+export type AgentImplementationTaskStatus =
+  | "OPEN"
+  | "IN_PROGRESS"
+  | "READY_FOR_VERIFICATION"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface AgentImplementationTaskResponse {
+  id: number;
+  agentRunId: number;
+  recommendationId: number;
+  title: string;
+  description: string;
+  reason: string;
+  target: string;
+  status: AgentImplementationTaskStatus;
+  createdBy: string;
+  createdAt: string;
+  completedBy?: string | null;
+  completedAt?: string | null;
+  actionType?: string | null;
+  targetDate?: string | null;
+  mealType?: string | null;
+  beforeValue?: string | null;
+  afterValue?: string | null;
+  executedAt?: string | null;
+  executedBy?: string | null;
 }

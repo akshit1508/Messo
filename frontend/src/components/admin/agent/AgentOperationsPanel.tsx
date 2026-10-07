@@ -6,6 +6,7 @@ import {
   AgentStepResponse,
   ActionBriefData,
   AgentRecommendationResponse,
+  AgentImplementationTaskResponse,
 } from "@/types/agent";
 import {
   getAgentRuns,
@@ -17,6 +18,10 @@ import {
   rejectAgentRun,
   executeAgentAction,
   getAgentRunRecommendations,
+  getAgentRunTasks,
+  startAgentTask,
+  completeAgentTask,
+  cancelAgentTask,
 } from "@/lib/agentApi";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -25,14 +30,27 @@ import { AgentStartModal } from "./AgentStartModal";
 import { AgentTimeline } from "./AgentTimeline";
 import { ActionBriefCard } from "./ActionBriefCard";
 import { RecommendationResultCard } from "./RecommendationResultCard";
+import { ImplementationTaskCard } from "./ImplementationTaskCard";
 import { AgentAuditTrail } from "./AgentAuditTrail";
 
+import {
+  humanizeStatus,
+  humanizeShortTarget,
+  humanizeTarget,
+} from "@/lib/agentDisplay";
+
+export function getHumanStateLabel(status?: string | null): string {
+  return humanizeStatus(status);
+}
+
+// Operational Agent Decision Desk main view
 export function AgentOperationsPanel() {
   const [runs, setRuns] = useState<AgentRunResponse[]>([]);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
   const [activeRun, setActiveRun] = useState<AgentRunResponse | null>(null);
   const [steps, setSteps] = useState<AgentStepResponse[]>([]);
   const [recommendations, setRecommendations] = useState<AgentRecommendationResponse[]>([]);
+  const [tasks, setTasks] = useState<AgentImplementationTaskResponse[]>([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,17 +76,19 @@ export function AgentOperationsPanel() {
     loadRuns();
   }, [loadRuns]);
 
-  // Load selected run details, steps, and recommendations
+  // Load selected run details, steps, recommendations, and tasks
   const loadRunDetails = useCallback(async (runId: number) => {
     try {
-      const [runData, stepsData, recsData] = await Promise.all([
+      const [runData, stepsData, recsData, tasksData] = await Promise.all([
         getAgentRun(runId),
         getAgentRunSteps(runId),
         getAgentRunRecommendations(runId),
+        getAgentRunTasks(runId).catch(() => []),
       ]);
       setActiveRun(runData);
       setSteps(stepsData);
       setRecommendations(recsData);
+      setTasks(tasksData);
     } catch (err: any) {
       console.error(`Failed to load details for run ${runId}:`, err);
     }
@@ -133,14 +153,21 @@ export function AgentOperationsPanel() {
     }
   };
 
-  // Handle Approve
+  // Handle Approve Recommendation
   const handleApprove = async () => {
     if (!activeRun) return;
     setIsActionLoading(true);
     setError(null);
     try {
-      const updated = await approveAgentRun(activeRun.id);
-      setActiveRun(updated);
+      if (activeRun.status === "WAITING_FOR_APPROVAL") {
+        await approveAgentRun(activeRun.id);
+      }
+      // Record recommendation in backend review mode
+      const execResult = await executeAgentAction(activeRun.id);
+      if (execResult.executionStatus === "FAILED" || execResult.status === "FAILED") {
+        setError(execResult.error || "Action execution could not be completed.");
+      }
+      await loadRunDetails(activeRun.id);
       await loadRuns();
     } catch (err: any) {
       setError(err?.message || "Approval could not be completed.");
@@ -165,17 +192,52 @@ export function AgentOperationsPanel() {
     }
   };
 
-  // Handle Execute Action
+  // Handle Execute (fallback to handleApprove)
   const handleExecute = async () => {
-    if (!activeRun) return;
+    await handleApprove();
+  };
+
+  // Handle Implementation Task actions
+  const handleStartTask = async (taskId: number) => {
     setIsActionLoading(true);
     setError(null);
     try {
-      await executeAgentAction(activeRun.id);
-      await loadRunDetails(activeRun.id);
-      await loadRuns();
+      await startAgentTask(taskId);
+      if (selectedRunId) {
+        await loadRunDetails(selectedRunId);
+      }
     } catch (err: any) {
-      setError(err?.message || "Action could not be executed. No operational changes applied.");
+      setError(err?.message || "Failed to start task.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCompleteTask = async (taskId: number) => {
+    setIsActionLoading(true);
+    setError(null);
+    try {
+      await completeAgentTask(taskId);
+      if (selectedRunId) {
+        await loadRunDetails(selectedRunId);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to complete task.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCancelTask = async (taskId: number, reason?: string) => {
+    setIsActionLoading(true);
+    setError(null);
+    try {
+      await cancelAgentTask(taskId, reason);
+      if (selectedRunId) {
+        await loadRunDetails(selectedRunId);
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to cancel task.");
     } finally {
       setIsActionLoading(false);
     }
@@ -194,39 +256,106 @@ export function AgentOperationsPanel() {
 
   return (
     <div className="space-y-5">
-      {/* 1. Header Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-white shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* 1. Decision Desk Header */}
+      <div className="bg-white border border-slate-200/90 rounded-lg p-5 sm:p-6 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1 max-w-2xl">
-            <div className="text-[10px] font-bold tracking-wider uppercase text-slate-400">
-              OPERATIONAL INTELLIGENCE / CONTROL LAYER
+            <div className="text-[11px] font-semibold tracking-wider uppercase text-emerald-800">
+              Decision Desk
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-              AI OPERATIONS AGENT
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+              AI Operations Agent
             </h2>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              Investigate operational issues, connect evidence, and prepare controlled actions for review.
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              Investigate an operational issue, connect the relevant evidence, and prepare a recommendation for review.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             {activeRun && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
-                <span className="text-slate-400">Run #{activeRun.id}:</span>
-                <span className="font-semibold text-white">{activeRun.status}</span>
+              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200">
+                <span className="text-slate-400">Investigation #{activeRun.id}:</span>
+                <span className="font-semibold text-slate-800">{getHumanStateLabel(activeRun.status)}</span>
               </div>
             )}
             <Button
               variant="primary"
               size="md"
               onClick={() => setIsModalOpen(true)}
-              className="bg-white hover:bg-slate-100 text-slate-900 font-semibold shadow-xs shrink-0 text-xs"
+              className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium shadow-xs text-xs sm:text-sm px-4 py-2"
             >
-              + Start Investigation
+              Start an Investigation
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Operational Workflow Progression Strip */}
+      {activeRun && (
+        <div className="bg-slate-50/70 border border-slate-200/80 rounded-lg px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px]">
+            <span className={activeRun.status === "RUNNING" && steps.length < 2 ? "font-bold text-emerald-900" : "text-slate-700"}>
+              Investigation
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={activeRun.status === "RUNNING" && steps.length >= 2 ? "font-bold text-emerald-900" : steps.length > 0 ? "text-slate-700" : "text-slate-400"}>
+              Analysis
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={parsedBrief ? "text-slate-700" : "text-slate-400"}>
+              Recommendation
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={activeRun.status === "WAITING_FOR_APPROVAL" ? "font-bold text-amber-900" : activeRun.status === "APPROVED" || activeRun.status === "COMPLETED" ? "text-slate-700" : "text-slate-400"}>
+              Review
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={activeRun.status === "APPROVED" && tasks.length === 0 ? "font-bold text-emerald-900" : activeRun.status === "APPROVED" || activeRun.status === "COMPLETED" ? "text-slate-700" : "text-slate-400"}>
+              Approved
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={tasks.length > 0 && tasks[0].status === "READY_FOR_VERIFICATION" ? "font-bold text-amber-900" : tasks.length > 0 && tasks[0].status !== "COMPLETED" ? "font-bold text-sky-900" : tasks.length > 0 ? "text-slate-700" : "text-slate-400"}>
+              {tasks[0]?.status === "READY_FOR_VERIFICATION" ? "Ready for Verification" : "Implementation Task"}
+            </span>
+            <span className="text-slate-300 select-none">→</span>
+            <span className={tasks[0]?.status === "COMPLETED" ? "font-bold text-emerald-900" : "text-slate-400"}>
+              Verified & Completed
+            </span>
+          </div>
+
+          <div className="text-[11px] text-slate-500 flex items-center gap-2">
+            <span>Investigation #{activeRun.id}</span>
+            <span>·</span>
+            <span className="font-semibold text-slate-800">{getHumanStateLabel(activeRun.status)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Run Failure / Safeguard Halt Alert */}
+      {activeRun?.status === "FAILED" && (
+        <div className="p-4 bg-rose-50/90 border border-rose-300 text-rose-950 rounded-lg space-y-2 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-pulse" />
+              <span className="font-bold text-xs uppercase tracking-wider text-rose-900">
+                Action Could Not Be Completed (Safeguard Protected)
+              </span>
+            </div>
+            {activeRun.failureCode && (
+              <span className="px-2 py-0.5 font-mono text-[11px] font-semibold bg-rose-100 text-rose-800 border border-rose-300 rounded">
+                {activeRun.failureCode}
+              </span>
+            )}
+          </div>
+          <div className="bg-white/90 p-3 rounded border border-rose-200 text-rose-900 text-xs leading-relaxed font-medium">
+            <span className="font-bold text-rose-950 block mb-1">Reason returned by operations engine:</span>
+            {activeRun.failureReason || "An operational validation safeguard prevented modifying data because the current state did not match expected inputs."}
+          </div>
+          <p className="text-[11px] text-rose-700 italic">
+            Safeguard guarantee: No partial or inconsistent changes were made to operational menu records.
+          </p>
+        </div>
+      )}
 
       {/* Error state */}
       {error && (
@@ -246,34 +375,51 @@ export function AgentOperationsPanel() {
         </div>
       )}
 
-      {/* 2. Run Selector Bar */}
+      {/* 2. Investigation Selector Bar */}
       {runs.length > 0 && (
         <div className="flex items-center justify-between gap-3 overflow-x-auto pb-0.5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              Runs:
+            <span className="text-[11px] font-semibold text-slate-500">
+              Investigations:
             </span>
-            <div className="flex items-center gap-1.5">
-              {runs.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setSelectedRunId(r.id)}
-                  className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
-                    selectedRunId === r.id
-                      ? "bg-slate-900 text-white shadow-2xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  #{r.id} ({r.goalTarget || "General"})
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              {runs.map((r) => {
+                const isSelected = selectedRunId === r.id;
+                const targetLabel = humanizeTarget(r.goalTarget);
+                const dateLabel = r.createdAt
+                  ? new Date(r.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                  : "";
+
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => setSelectedRunId(r.id)}
+                    className={`px-3 py-1.5 text-xs rounded-lg text-left transition-all border shrink-0 ${
+                      isSelected
+                        ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                    }`}
+                  >
+                    <span className="font-semibold block leading-tight">
+                      {targetLabel}
+                    </span>
+                    <span
+                      className={`text-[10px] block leading-tight mt-0.5 ${
+                        isSelected ? "text-slate-300" : "text-slate-400"
+                      }`}
+                    >
+                      Investigation {r.id}{dateLabel ? ` · ${dateLabel}` : ""}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {activeRun && (
             <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
-              <span className="text-[11px] uppercase tracking-wider text-slate-400">Status:</span>
+              <span className="text-[11px] text-slate-500">Status:</span>
               <Badge
                 variant={
                   activeRun.status === "COMPLETED"
@@ -287,7 +433,7 @@ export function AgentOperationsPanel() {
                     : "default"
                 }
               >
-                {activeRun.status}
+                {getHumanStateLabel(activeRun.status)}
               </Badge>
             </div>
           )}
@@ -303,10 +449,10 @@ export function AgentOperationsPanel() {
               <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/70 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                    INVESTIGATION TIMELINE
+                    Investigation timeline
                   </CardTitle>
                   <span className="text-[11px] font-mono text-slate-400">
-                    Run #{activeRun.id}
+                    Investigation #{activeRun.id}
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -335,30 +481,46 @@ export function AgentOperationsPanel() {
                 isActionLoading={isActionLoading}
                 approvedBy={activeRun.approvedBy}
                 approvedAt={activeRun.approvedAt}
+                recommendationId={recommendations[0]?.id}
+                failureCode={activeRun.failureCode}
+                failureReason={activeRun.failureReason}
               />
+            ) : recommendations.length > 0 ? (
+              <div className="space-y-3">
+                {recommendations.map((rec) => (
+                  <RecommendationResultCard key={rec.id} recommendation={rec} />
+                ))}
+              </div>
             ) : isRunning ? (
               <Card className="border border-slate-200 text-center p-8">
                 <div className="max-w-sm mx-auto space-y-2.5">
                   <div className="w-6 h-6 rounded-full border-2 border-slate-900 border-t-transparent animate-spin mx-auto" />
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                    Investigation In Progress
+                    Investigation in progress
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    The Agent is gathering evidence and evaluating statistical models for Run #{activeRun.id}.
+                    The Agent is gathering evidence and evaluating patterns for Investigation #{activeRun.id}.
                   </p>
                 </div>
               </Card>
             ) : (
               <Card className="border border-slate-200 text-center p-8 text-xs text-slate-500">
-                No Action Brief available for this run.
+                No recommendation available for this investigation yet.
               </Card>
             )}
 
-            {/* Recommendations (if action completed) */}
-            {recommendations.length > 0 && (
+            {/* Implementation Tasks (Rendered directly below recommendation / approval card) */}
+            {tasks.length > 0 && (
               <div className="space-y-3">
-                {recommendations.map((rec) => (
-                  <RecommendationResultCard key={rec.id} recommendation={rec} />
+                {tasks.map((task) => (
+                  <ImplementationTaskCard
+                    key={task.id}
+                    task={task}
+                    onStart={handleStartTask}
+                    onComplete={handleCompleteTask}
+                    onCancel={handleCancelTask}
+                    isLoading={isActionLoading}
+                  />
                 ))}
               </div>
             )}
@@ -368,28 +530,28 @@ export function AgentOperationsPanel() {
               run={activeRun}
               steps={steps}
               recommendations={recommendations}
+              tasks={tasks}
             />
           </div>
         </div>
       ) : (
-        /* Empty landing state when no runs exist */
-        <Card className="border border-slate-200 text-center py-12 px-4">
+        /* Empty landing state when no investigations exist */
+        <Card className="border border-slate-200/90 text-center py-12 px-4 bg-white">
           <div className="max-w-md mx-auto space-y-2.5">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">
-              No Investigations Recorded
+            <h3 className="text-sm font-bold text-slate-900">
+              No investigation started yet
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Start an operational investigation to explore drop in dinner satisfaction,
-              complaint surges, or menu consistency using registered intelligence engines.
+              Start with a recent operational issue and let the agent gather the relevant evidence.
             </p>
             <div className="pt-2">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => setIsModalOpen(true)}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-medium"
+                className="bg-emerald-800 hover:bg-emerald-900 text-white font-medium px-4 py-2"
               >
-                + Start First Investigation
+                Start an Investigation
               </Button>
             </div>
           </div>
